@@ -8,7 +8,8 @@ def get_connection():
         port=config.DB_PORT,
         dbname=config.DB_NAME,
         user=config.DB_USER,
-        password=config.DB_PASSWORD
+        password=config.DB_PASSWORD,
+        sslmode='require'
     )
 
 def ensure_unique_constraint():
