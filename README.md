@@ -33,7 +33,10 @@ This system aggregates personal location data from multiple sources:
 ~/code/mylocation/
 ├── config.py               # Database credentials (gitignored)
 ├── db.py                   # Database connection helper
-├── run_daily_sync.sh       # Cron wrapper for GPS sync
+├── run_daily_sync.sh       # Cron wrapper for GPS sync (local)
+├── sync.sh                 # Cron wrapper for GPS sync (Docker)
+├── Dockerfile              # Docker container build
+├── .dockerignore            # Docker build exclusions
 ├── requirements.txt        # psycopg2-binary, requests, openpyxl
 │
 ├── gps/                    # GPS location tracking module
@@ -243,6 +246,20 @@ See `ga/README.md` for full schema.
 | Skiing stats | `skiing/skiing_report.py` | `reports/skiing_report.html` |
 | GA logbook | `ga/ga_report.py` | `reports/ga_report.html`, `reports/ga_report.md` |
 
+## Docker Deployment
+
+The GPS collector can be deployed as a Docker container with its own cron.
+
+```bash
+# Build
+docker build -t mylocation .
+
+# Run (detached, auto-restart)
+docker run -d --name mylocation --restart unless-stopped mylocation
+```
+
+The container runs cron internally, triggering `followmee_sync.py --daily` at 5am with healthchecks.io pings on start/success/failure. Sync output is logged to `/var/log/sync.log` (visible via `docker logs`).
+
 ## Dependencies
 
 ```bash
@@ -252,4 +269,4 @@ pip install psycopg2-binary requests openpyxl
 
 ---
 
-*Created: 2026-01-21 | Updated: 2026-01-25*
+*Created: 2026-01-21 | Updated: 2026-02-21*
