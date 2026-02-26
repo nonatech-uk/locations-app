@@ -33,8 +33,7 @@ This system aggregates personal location data from multiple sources:
 ~/code/mylocation/
 ├── config.py               # Database credentials (gitignored)
 ├── db.py                   # Database connection helper
-├── run_daily_sync.sh       # Cron wrapper for GPS sync (local)
-├── sync.sh                 # Cron wrapper for GPS sync (Docker)
+├── sync.sh                 # GPS sync entrypoint (invoked by Cronicle)
 ├── Dockerfile              # Docker container build
 ├── .dockerignore            # Docker build exclusions
 ├── requirements.txt        # psycopg2-binary, requests, openpyxl
@@ -82,18 +81,12 @@ This system aggregates personal location data from multiple sources:
 
 ### Daily Sync (Automated)
 
-**Cron job** (5am daily):
-```
-0 5 * * * /home/stu/code/mylocation/run_daily_sync.sh
-```
+Scheduled via **Cronicle** (5am daily), which runs `sync.sh` inside the container and handles healthcheck pings.
 
 **What it does:**
 1. Fetches last 48 hours from FollowMee API
 2. Checks for gaps in last 7 days
 3. Attempts to fill any missing days
-4. Pings healthchecks.io on success/failure
-
-**Healthchecks:** https://hc.mees.st/ping/32960f21-f84a-4635-9de5-94dfbca6e16c
 
 ### GPS Scripts
 
@@ -248,17 +241,17 @@ See `ga/README.md` for full schema.
 
 ## Docker Deployment
 
-The GPS collector can be deployed as a Docker container with its own cron.
+The container provides the sync script as its entrypoint; scheduling is handled externally by Cronicle.
 
 ```bash
 # Build
 docker build -t mylocation .
 
-# Run (detached, auto-restart)
-docker run -d --name mylocation --restart unless-stopped mylocation
+# Run on-demand (Cronicle triggers this)
+docker run --rm mylocation
 ```
 
-The container runs cron internally, triggering `followmee_sync.py --daily` at 5am with healthchecks.io pings on start/success/failure. Sync output is logged to `/var/log/sync.log` (visible via `docker logs`).
+Output goes to stdout/stderr, captured by the scheduler.
 
 ## Dependencies
 
