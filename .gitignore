@@ -35,3 +35,7 @@ data/
 # Generated reports
 reports/
 GA/
+
+# Frontend
+ui/node_modules/
+ui/dist/
