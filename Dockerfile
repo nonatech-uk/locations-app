@@ -26,6 +26,7 @@ COPY gps/ gps/
 COPY flights/ flights/
 COPY skiing/ skiing/
 COPY ga/ ga/
+COPY immich/ immich/
 RUN chmod +x scripts/entrypoint.sh sync.sh
 
 ENV PYTHONPATH=/app

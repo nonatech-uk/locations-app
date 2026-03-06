@@ -5,3 +5,4 @@ cd /app
 set -a; source /app/.env; set +a
 
 python3 /app/gps/followmee_sync.py --daily
+python3 /app/immich/immich_sync.py
