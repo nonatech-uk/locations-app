@@ -27,7 +27,9 @@ COPY flights/ flights/
 COPY skiing/ skiing/
 COPY ga/ ga/
 COPY immich/ immich/
-RUN chmod +x scripts/entrypoint.sh sync.sh
+COPY tractive/ tractive/
+COPY tractive-sync.sh .
+RUN chmod +x scripts/entrypoint.sh sync.sh tractive-sync.sh
 
 ENV PYTHONPATH=/app
 

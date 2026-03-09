@@ -19,6 +19,11 @@ FOLLOWMEE_DEVICE_ID = os.environ["FOLLOWMEE_DEVICE_ID"]
 DEVICE_ID = os.environ.get("DEVICE_ID", "followmee")
 KML_DIR = os.environ.get("KML_DIR", "/home/stu/kml")
 
+# Tractive API
+TRACTIVE_EMAIL = os.environ.get("TRACTIVE_EMAIL", "")
+TRACTIVE_PASSWORD = os.environ.get("TRACTIVE_PASSWORD", "")
+TRACTIVE_TRACKER_IDS = os.environ.get("TRACTIVE_TRACKER_IDS", "IVCJXGML")
+
 # Immich database (read-only)
 IMMICH_DB_HOST = os.environ.get("IMMICH_DB_HOST", "127.0.0.1")
 IMMICH_DB_PORT = int(os.environ.get("IMMICH_DB_PORT", 5433))
