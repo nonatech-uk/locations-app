@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_sslmode: str = "require"
 
+    # OwnTracks
+    owntracks_secret: str = ""
+
     # API server
     api_host: str = "0.0.0.0"
     api_port: int = 8100
