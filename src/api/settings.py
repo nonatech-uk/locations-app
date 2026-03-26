@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # OwnTracks
     owntracks_secret: str = ""
 
+    # Pipeline ingest
+    pipeline_secret: str = ""
+
     # API server
     api_host: str = "0.0.0.0"
     api_port: int = 8100
