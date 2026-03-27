@@ -127,6 +127,8 @@ def enrich_flight(conn, flight, api_key):
                     updates["registration"] = result["registration"]
                 if result.get("operator_iata"):
                     updates["airline_code"] = result["operator_iata"]
+                if result.get("operator"):
+                    updates["airline"] = result["operator"]
 
                 dep_time = extract_time(result.get("actual_off") or result.get("scheduled_out"))
                 arr_time = extract_time(result.get("actual_on") or result.get("scheduled_in"))
@@ -138,6 +140,37 @@ def enrich_flight(conn, flight, api_key):
                     dur = calculate_duration(dep_time, arr_time)
                     if dur:
                         updates["duration"] = dur
+
+                # Gate, terminal, baggage
+                if result.get("gate_origin"):
+                    updates["gate_origin"] = result["gate_origin"]
+                if result.get("gate_destination"):
+                    updates["gate_destination"] = result["gate_destination"]
+                if result.get("terminal_origin"):
+                    updates["terminal_origin"] = result["terminal_origin"]
+                if result.get("terminal_destination"):
+                    updates["terminal_destination"] = result["terminal_destination"]
+                if result.get("baggage_claim"):
+                    updates["baggage_claim"] = result["baggage_claim"]
+
+                # Delays, route distance, runways
+                if result.get("departure_delay") is not None:
+                    updates["departure_delay"] = result["departure_delay"]
+                if result.get("arrival_delay") is not None:
+                    updates["arrival_delay"] = result["arrival_delay"]
+                if result.get("route_distance"):
+                    updates["route_distance"] = result["route_distance"]
+                if result.get("actual_runway_off"):
+                    updates["runway_origin"] = result["actual_runway_off"]
+                if result.get("actual_runway_on"):
+                    updates["runway_destination"] = result["actual_runway_on"]
+
+                # Codeshares
+                codeshares_iata = result.get("codeshares_iata") or []
+                # Exclude the flight's own number
+                codeshares_iata = [c for c in codeshares_iata if c != flight_number]
+                if codeshares_iata:
+                    updates["codeshares"] = ",".join(codeshares_iata)
 
                 print(f"    FlightAware: aircraft={result.get('aircraft_type')}, reg={result.get('registration')}")
             else:

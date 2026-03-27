@@ -29,6 +29,23 @@ CREATE TABLE IF NOT EXISTS flights (
     aircraft_code TEXT,               -- B772
     registration TEXT,                -- G-VIIE
 
+    -- Gate/terminal
+    gate_origin TEXT,
+    gate_destination TEXT,
+    terminal_origin TEXT,
+    terminal_destination TEXT,
+    baggage_claim TEXT,
+
+    -- Delays (seconds, negative = early)
+    departure_delay INTEGER,
+    arrival_delay INTEGER,
+
+    -- Route
+    route_distance INTEGER,           -- FlightAware route distance (nm)
+    runway_origin TEXT,
+    runway_destination TEXT,
+    codeshares TEXT,                   -- comma-separated IATA codes
+
     -- Passenger details
     seat_number TEXT,
     seat_type INTEGER,                -- 1=window, 2=middle, 3=aisle
