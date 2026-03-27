@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Enrich pipeline-ingested flights with AviationStack API and OpenFlights data."""
+"""Enrich pipeline-ingested flights with FlightAware AeroAPI and OpenFlights data."""
 
 import os
 import sys
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
@@ -12,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import db
 from flights.airports import load_airports, lookup_airport, haversine_km
 
-AVIATIONSTACK_URL = "https://api.aviationstack.com/v1/flights"
+FLIGHTAWARE_URL = "https://aeroapi.flightaware.com/aeroapi"
 HC_URL = os.environ.get("ENRICH_HC_URL", "")
 
 
@@ -25,32 +26,33 @@ def ping_hc(suffix=""):
 
 
 def fetch_flight(api_key, flight_number, flight_date):
-    """Look up a flight on AviationStack. Returns response dict or None."""
+    """Look up a flight on FlightAware AeroAPI. Returns response dict or None."""
+    date_obj = datetime.strptime(flight_date, "%Y-%m-%d")
+    next_day = date_obj + timedelta(days=1)
+
     resp = requests.get(
-        AVIATIONSTACK_URL,
+        f"{FLIGHTAWARE_URL}/flights/{flight_number}",
+        headers={"x-apikey": api_key},
         params={
-            "access_key": api_key,
-            "flight_iata": flight_number,
+            "start": f"{flight_date}T00:00:00Z",
+            "end": next_day.strftime("%Y-%m-%dT00:00:00Z"),
         },
         timeout=30,
     )
     resp.raise_for_status()
     data = resp.json()
 
-    if data.get("error"):
-        print(f"  AviationStack error: {data['error'].get('message', data['error'])}")
-        return None
-
-    results = data.get("data", [])
+    results = data.get("flights", [])
     if not results:
         return None
 
     # Match by date if possible
     for r in results:
-        if r.get("flight_date") == flight_date:
+        scheduled = r.get("scheduled_out") or ""
+        if scheduled.startswith(flight_date):
             return r
 
-    # Fall back to first result (same flight number, close enough)
+    # Fall back to first result
     return results[0]
 
 
@@ -83,7 +85,7 @@ def calculate_duration(dep_time, arr_time):
 
 
 def enrich_flight(conn, flight, api_key):
-    """Enrich a single flight row with AviationStack + OpenFlights data."""
+    """Enrich a single flight row with FlightAware + OpenFlights data."""
     flight_id = flight[0]
     flight_date = str(flight[1])
     flight_number = flight[2]
@@ -113,25 +115,21 @@ def enrich_flight(conn, flight, api_key):
     if dep and arr:
         updates["distance_km"] = haversine_km(dep["lat"], dep["lon"], arr["lat"], arr["lon"])
 
-    # AviationStack enrichment
+    # FlightAware enrichment
     if api_key and flight_number:
         try:
+            time.sleep(6)  # rate limit: 10 req/min
             result = fetch_flight(api_key, flight_number, flight_date)
             if result:
-                aircraft = result.get("aircraft") or {}
-                airline = result.get("airline") or {}
-                departure = result.get("departure") or {}
-                arrival = result.get("arrival") or {}
+                if result.get("aircraft_type"):
+                    updates["aircraft_code"] = result["aircraft_type"]
+                if result.get("registration"):
+                    updates["registration"] = result["registration"]
+                if result.get("operator_iata"):
+                    updates["airline_code"] = result["operator_iata"]
 
-                if aircraft.get("iata"):
-                    updates["aircraft_code"] = aircraft["iata"]
-                if aircraft.get("registration"):
-                    updates["registration"] = aircraft["registration"]
-                if airline.get("iata"):
-                    updates["airline_code"] = airline["iata"]
-
-                dep_time = extract_time(departure.get("actual") or departure.get("scheduled"))
-                arr_time = extract_time(arrival.get("actual") or arrival.get("scheduled"))
+                dep_time = extract_time(result.get("actual_off") or result.get("scheduled_out"))
+                arr_time = extract_time(result.get("actual_on") or result.get("scheduled_in"))
                 if dep_time:
                     updates["dep_time"] = dep_time
                 if arr_time:
@@ -141,11 +139,11 @@ def enrich_flight(conn, flight, api_key):
                     if dur:
                         updates["duration"] = dur
 
-                print(f"    AviationStack: aircraft={aircraft.get('iata')}, reg={aircraft.get('registration')}")
+                print(f"    FlightAware: aircraft={result.get('aircraft_type')}, reg={result.get('registration')}")
             else:
-                print(f"    AviationStack: no results")
+                print(f"    FlightAware: no results")
         except Exception as e:
-            print(f"    AviationStack error: {e}")
+            print(f"    FlightAware error: {e}")
 
     if not updates:
         print(f"    No enrichment data found")
@@ -166,9 +164,9 @@ def enrich_flight(conn, flight, api_key):
 
 
 def main():
-    api_key = os.environ.get("AVIATIONSTACK_API_KEY", "")
+    api_key = os.environ.get("FLIGHTAWARE_API_KEY", "")
     if not api_key:
-        print("Warning: AVIATIONSTACK_API_KEY not set — only OpenFlights enrichment available")
+        print("Warning: FLIGHTAWARE_API_KEY not set — only OpenFlights enrichment available")
 
     ping_hc("/start")
 
