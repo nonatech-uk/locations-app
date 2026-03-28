@@ -56,6 +56,72 @@ def fetch_flight(api_key, flight_number, flight_date):
     return results[0]
 
 
+def fetch_flight_by_route(api_key, dep_icao, arr_icao, flight_date, scheduled_dep_local):
+    """Fall back to route search when flight number lookup fails.
+
+    Searches FlightAware for flights between two airports on a date,
+    then matches by scheduled departure time (within 30 min tolerance).
+    """
+    date_obj = datetime.strptime(flight_date, "%Y-%m-%d")
+    next_day = date_obj + timedelta(days=1)
+
+    resp = requests.get(
+        f"{FLIGHTAWARE_URL}/airports/{dep_icao}/flights/to/{arr_icao}",
+        headers={"x-apikey": api_key},
+        params={
+            "start": f"{flight_date}T00:00:00Z",
+            "end": next_day.strftime("%Y-%m-%dT00:00:00Z"),
+            "type": "Airline",
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    # Route endpoint wraps flights in segments
+    candidates = []
+    for entry in data.get("flights", []):
+        for seg in entry.get("segments", [entry]):
+            candidates.append(seg)
+
+    if not candidates:
+        return None
+
+    # Parse the scheduled local dep time from our DB (HH:MM:SS or HH:MM)
+    dep_parts = scheduled_dep_local.split(":")
+    dep_local_minutes = int(dep_parts[0]) * 60 + int(dep_parts[1])
+
+    # Match by scheduled departure time — FlightAware returns scheduled_out
+    # in UTC but with timezone info in origin, so we convert
+    best = None
+    best_diff = 9999
+    for c in candidates:
+        sched = c.get("scheduled_out") or ""
+        if not sched:
+            continue
+        try:
+            sched_dt = datetime.fromisoformat(sched.replace("Z", "+00:00"))
+            # Convert to origin timezone
+            tz_name = c.get("origin", {}).get("timezone")
+            if tz_name:
+                from zoneinfo import ZoneInfo
+                sched_local = sched_dt.astimezone(ZoneInfo(tz_name))
+            else:
+                sched_local = sched_dt
+            sched_minutes = sched_local.hour * 60 + sched_local.minute
+            diff = abs(sched_minutes - dep_local_minutes)
+            if diff < best_diff:
+                best_diff = diff
+                best = c
+        except (ValueError, TypeError):
+            continue
+
+    if best and best_diff <= 30:
+        return best
+
+    return None
+
+
 def extract_time(time_str):
     """Extract HH:MM time from an ISO datetime string."""
     if not time_str:
@@ -84,17 +150,75 @@ def calculate_duration(dep_time, arr_time):
         return None
 
 
+def apply_flightaware(updates, result, flight_number):
+    """Extract FlightAware fields into the updates dict."""
+    if result.get("aircraft_type"):
+        updates["aircraft_code"] = result["aircraft_type"]
+    if result.get("registration"):
+        updates["registration"] = result["registration"]
+    if result.get("operator_iata"):
+        updates["airline_code"] = result["operator_iata"]
+    if result.get("operator"):
+        updates["airline"] = result["operator"]
+
+    dep_time = extract_time(result.get("actual_off") or result.get("scheduled_out"))
+    arr_time = extract_time(result.get("actual_on") or result.get("scheduled_in"))
+    if dep_time:
+        updates["dep_time"] = dep_time
+    if arr_time:
+        updates["arr_time"] = arr_time
+    if dep_time and arr_time:
+        dur = calculate_duration(dep_time, arr_time)
+        if dur:
+            updates["duration"] = dur
+
+    # Gate, terminal, baggage
+    if result.get("gate_origin"):
+        updates["gate_origin"] = result["gate_origin"]
+    if result.get("gate_destination"):
+        updates["gate_destination"] = result["gate_destination"]
+    if result.get("terminal_origin"):
+        updates["terminal_origin"] = result["terminal_origin"]
+    if result.get("terminal_destination"):
+        updates["terminal_destination"] = result["terminal_destination"]
+    if result.get("baggage_claim"):
+        updates["baggage_claim"] = result["baggage_claim"]
+
+    # Delays, route distance, runways
+    if result.get("departure_delay") is not None:
+        updates["departure_delay"] = result["departure_delay"]
+    if result.get("arrival_delay") is not None:
+        updates["arrival_delay"] = result["arrival_delay"]
+    if result.get("route_distance"):
+        updates["route_distance"] = result["route_distance"]
+    if result.get("actual_runway_off"):
+        updates["runway_origin"] = result["actual_runway_off"]
+    if result.get("actual_runway_on"):
+        updates["runway_destination"] = result["actual_runway_on"]
+
+    # Codeshares
+    codeshares_iata = result.get("codeshares_iata") or []
+    codeshares_iata = [c for c in codeshares_iata if c != flight_number]
+    if codeshares_iata:
+        updates["codeshares"] = ",".join(codeshares_iata)
+
+
 def enrich_flight(conn, flight, api_key):
-    """Enrich a single flight row with FlightAware + OpenFlights data."""
+    """Enrich a single flight row with FlightAware + OpenFlights data.
+
+    Returns a dict with 'status' ('enriched', 'no_fa_data', 'error') and 'summary'.
+    """
     flight_id = flight[0]
     flight_date = str(flight[1])
     flight_number = flight[2]
     dep_iata = flight[3]
     arr_iata = flight[4]
+    dep_time_db = str(flight[5]) if flight[5] else None
 
     print(f"  Enriching flight {flight_id}: {flight_number} {dep_iata}→{arr_iata} on {flight_date}")
 
     updates = {}
+    fa_found = False
 
     # OpenFlights enrichment (always available)
     dep = lookup_airport(dep_iata)
@@ -120,67 +244,28 @@ def enrich_flight(conn, flight, api_key):
         try:
             time.sleep(6)  # rate limit: 10 req/min
             result = fetch_flight(api_key, flight_number, flight_date)
+
+            # Fall back to route search if flight number lookup fails
+            if not result and dep and arr and dep_time_db:
+                print(f"    Flight number not found, trying route search {dep['icao']}→{arr['icao']}...")
+                time.sleep(6)
+                result = fetch_flight_by_route(api_key, dep["icao"], arr["icao"], flight_date, dep_time_db)
+                if result:
+                    print(f"    Route search matched: {result.get('ident_iata')} (operator: {result.get('operator')})")
+
             if result:
-                if result.get("aircraft_type"):
-                    updates["aircraft_code"] = result["aircraft_type"]
-                if result.get("registration"):
-                    updates["registration"] = result["registration"]
-                if result.get("operator_iata"):
-                    updates["airline_code"] = result["operator_iata"]
-                if result.get("operator"):
-                    updates["airline"] = result["operator"]
-
-                dep_time = extract_time(result.get("actual_off") or result.get("scheduled_out"))
-                arr_time = extract_time(result.get("actual_on") or result.get("scheduled_in"))
-                if dep_time:
-                    updates["dep_time"] = dep_time
-                if arr_time:
-                    updates["arr_time"] = arr_time
-                if dep_time and arr_time:
-                    dur = calculate_duration(dep_time, arr_time)
-                    if dur:
-                        updates["duration"] = dur
-
-                # Gate, terminal, baggage
-                if result.get("gate_origin"):
-                    updates["gate_origin"] = result["gate_origin"]
-                if result.get("gate_destination"):
-                    updates["gate_destination"] = result["gate_destination"]
-                if result.get("terminal_origin"):
-                    updates["terminal_origin"] = result["terminal_origin"]
-                if result.get("terminal_destination"):
-                    updates["terminal_destination"] = result["terminal_destination"]
-                if result.get("baggage_claim"):
-                    updates["baggage_claim"] = result["baggage_claim"]
-
-                # Delays, route distance, runways
-                if result.get("departure_delay") is not None:
-                    updates["departure_delay"] = result["departure_delay"]
-                if result.get("arrival_delay") is not None:
-                    updates["arrival_delay"] = result["arrival_delay"]
-                if result.get("route_distance"):
-                    updates["route_distance"] = result["route_distance"]
-                if result.get("actual_runway_off"):
-                    updates["runway_origin"] = result["actual_runway_off"]
-                if result.get("actual_runway_on"):
-                    updates["runway_destination"] = result["actual_runway_on"]
-
-                # Codeshares
-                codeshares_iata = result.get("codeshares_iata") or []
-                # Exclude the flight's own number
-                codeshares_iata = [c for c in codeshares_iata if c != flight_number]
-                if codeshares_iata:
-                    updates["codeshares"] = ",".join(codeshares_iata)
-
+                apply_flightaware(updates, result, flight_number)
+                fa_found = True
                 print(f"    FlightAware: aircraft={result.get('aircraft_type')}, reg={result.get('registration')}")
             else:
                 print(f"    FlightAware: no results")
         except Exception as e:
             print(f"    FlightAware error: {e}")
+            return {"status": "error", "summary": f"{flight_number} {dep_iata}→{arr_iata}: {e}"}
 
     if not updates:
         print(f"    No enrichment data found")
-        return False
+        return {"status": "no_fa_data", "summary": f"{flight_number} {dep_iata}→{arr_iata}: no data found"}
 
     # Build UPDATE query
     set_clauses = ", ".join(f"{k} = %({k})s" for k in updates)
@@ -192,8 +277,31 @@ def enrich_flight(conn, flight, api_key):
     conn.commit()
     cur.close()
 
-    print(f"    Updated {len(updates) - 1} fields")
-    return True
+    field_count = len(updates) - 1  # exclude 'id'
+    print(f"    Updated {field_count} fields")
+
+    summary = f"{flight_number} {dep_iata}→{arr_iata} {flight_date}"
+    if fa_found:
+        reg = updates.get("registration", "?")
+        ac = updates.get("aircraft_code", "?")
+        summary += f" — {ac} {reg}, {field_count} fields"
+        return {"status": "enriched", "summary": summary}
+    else:
+        summary += f" — OpenFlights only ({field_count} fields), no FlightAware data"
+        return {"status": "no_fa_data", "summary": summary}
+
+
+def ping_hc_with_body(suffix="", body=""):
+    """Ping healthcheck with optional body text for logging."""
+    if not HC_URL:
+        return
+    try:
+        if body:
+            requests.post(f"{HC_URL}{suffix}", data=body, timeout=10)
+        else:
+            requests.get(f"{HC_URL}{suffix}", timeout=10)
+    except Exception:
+        pass
 
 
 def main():
@@ -206,10 +314,10 @@ def main():
     conn = db.get_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, date, flight_number, dep_airport, arr_airport
+        SELECT id, date, flight_number, dep_airport, arr_airport, dep_time
         FROM flights
         WHERE source = 'pipeline'
-          AND dep_airport_name IS NULL
+          AND (dep_airport_name IS NULL OR registration IS NULL)
           AND date >= CURRENT_DATE - INTERVAL '7 days'
         ORDER BY date
     """)
@@ -219,28 +327,38 @@ def main():
     print(f"Found {len(flights)} flight(s) to enrich")
 
     enriched = 0
-    failed = 0
+    no_fa_data = 0
+    errors = 0
+    summaries = []
+
     for flight in flights:
-        try:
-            if enrich_flight(conn, flight, api_key):
-                enriched += 1
-            else:
-                failed += 1
-        except Exception as e:
-            print(f"  Error: {e}")
-            failed += 1
+        result = enrich_flight(conn, flight, api_key)
+        summaries.append(result["summary"])
+        if result["status"] == "enriched":
+            enriched += 1
+        elif result["status"] == "no_fa_data":
+            no_fa_data += 1
+        else:
+            errors += 1
 
     conn.close()
 
-    summary = f"Enriched {enriched}, failed {failed} of {len(flights)} flights"
-    print(summary)
+    total = len(flights)
+    report_lines = [f"Processed {total} flight(s): {enriched} enriched, {no_fa_data} no FA data, {errors} errors"]
+    report_lines.extend(summaries)
+    report = "\n".join(report_lines)
+    print(report)
 
-    if failed > 0:
-        ping_hc(f"/fail")
+    # Fail the healthcheck if any flights couldn't get FlightAware data or had errors
+    if errors > 0 or no_fa_data > 0:
+        ping_hc_with_body("/fail", report)
+        return 1
     else:
-        ping_hc("")
-
-    return 1 if failed > 0 else 0
+        if total > 0:
+            ping_hc_with_body("", report)
+        else:
+            ping_hc("")
+        return 0
 
 
 if __name__ == "__main__":
