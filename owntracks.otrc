@@ -1,0 +1,16 @@
+{
+  "_type": "configuration",
+  "mode": 3,
+  "url": "https://locs.mees.st/pub",
+  "username": "stu",
+  "password": "22e757ff6e47f9d1a5311af9517526d66702bffe89ee1345",
+  "deviceId": "phone",
+  "tid": "sb",
+  "monitoring": 2,
+  "cmd": true,
+  "locatorDisplacement": 100,
+  "locatorInterval": 60,
+  "pubRetain": false,
+  "ignoreStaleLocations": 0,
+  "pubTopicBase": ""
+}
