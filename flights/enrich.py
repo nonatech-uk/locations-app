@@ -319,6 +319,7 @@ def main():
         WHERE source = 'pipeline'
           AND (dep_airport_name IS NULL OR registration IS NULL)
           AND date >= CURRENT_DATE - INTERVAL '7 days'
+          AND date < CURRENT_DATE
         ORDER BY date
     """)
     flights = cur.fetchall()
