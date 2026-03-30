@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # API server
     api_host: str = "0.0.0.0"
     api_port: int = 8100
+    image_cache_dir: str = "/data/images"
     db_pool_min: int = 2
     db_pool_max: int = 10
     cors_origins: list[str] = [

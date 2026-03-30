@@ -11,6 +11,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import db
+from flights.aircraft import lookup_aircraft
 from flights.airports import load_airports, lookup_airport, haversine_km
 
 FLIGHTAWARE_URL = "https://aeroapi.flightaware.com/aeroapi"
@@ -154,6 +155,9 @@ def apply_flightaware(updates, result, flight_number):
     """Extract FlightAware fields into the updates dict."""
     if result.get("aircraft_type"):
         updates["aircraft_code"] = result["aircraft_type"]
+        ac = lookup_aircraft(result["aircraft_type"])
+        if ac:
+            updates["aircraft_type"] = ac["name"]
     if result.get("registration"):
         updates["registration"] = result["registration"]
     if result.get("operator_iata"):
@@ -317,7 +321,7 @@ def main():
         SELECT id, date, flight_number, dep_airport, arr_airport, dep_time
         FROM flights
         WHERE source = 'pipeline'
-          AND (dep_airport_name IS NULL OR registration IS NULL)
+          AND (dep_airport_name IS NULL OR registration IS NULL OR aircraft_type IS NULL)
           AND date >= CURRENT_DATE - INTERVAL '7 days'
           AND date < CURRENT_DATE
         ORDER BY date

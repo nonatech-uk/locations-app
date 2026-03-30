@@ -2,6 +2,8 @@ import { NavLink } from 'react-router-dom'
 
 const links = [
   { to: '/explorer', label: 'Explorer' },
+  { to: '/flights', label: 'Flights' },
+  { to: '/ga', label: 'GA Flights' },
 ]
 
 export default function Sidebar() {

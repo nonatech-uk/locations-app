@@ -7,3 +7,6 @@ geopy
 fastapi
 uvicorn[standard]
 pydantic-settings
+staticmap
+Pillow
+httpx
