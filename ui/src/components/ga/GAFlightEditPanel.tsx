@@ -13,7 +13,7 @@ function HoursRow({ label, value }: { label: string; value: number | null }) {
   if (!value || value === 0) return null
   return (
     <div>
-      <span className="text-xs text-[var(--text-secondary)]">{label}</span>
+      <span className="text-xs text-text-secondary">{label}</span>
       <div>{value.toFixed(2)}</div>
     </div>
   )
@@ -39,8 +39,8 @@ export default function GAFlightEditPanel({ flightId, onClose }: Props) {
   if (isLoading || !flight) {
     return (
       <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60" onClick={onClose}>
-        <div className="bg-[var(--bg-secondary)] border border-white/10 rounded-lg p-10">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+        <div className="bg-bg-secondary border border-border rounded-lg p-10 shadow-lg">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-accent border-t-transparent" />
         </div>
       </div>
     )
@@ -55,8 +55,8 @@ export default function GAFlightEditPanel({ flightId, onClose }: Props) {
   }
 
   const inputCls =
-    'bg-[var(--bg-primary)] border border-white/20 rounded px-2 py-1 text-sm text-[var(--text-primary)] w-full'
-  const labelCls = 'text-xs text-[var(--text-secondary)] mb-1'
+    'bg-bg-card border border-border rounded px-2 py-1 text-sm text-text-primary w-full'
+  const labelCls = 'text-xs text-text-secondary mb-1'
 
   const routeLabel = flight.is_local
     ? flight.dep_airport
@@ -65,7 +65,7 @@ export default function GAFlightEditPanel({ flightId, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="bg-[var(--bg-secondary)] border border-white/10 rounded-lg p-5 w-[90vw] max-w-4xl max-h-[85vh] overflow-y-auto"
+        className="bg-bg-secondary border border-border rounded-lg p-5 w-[90vw] max-w-4xl max-h-[85vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {lightbox && (
@@ -73,15 +73,15 @@ export default function GAFlightEditPanel({ flightId, onClose }: Props) {
         )}
 
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[var(--accent)] font-semibold">
+          <h3 className="text-accent font-semibold">
             {routeLabel} &mdash; {flight.date}
             {flight.is_local && (
-              <span className="ml-2 text-xs text-[var(--text-secondary)] font-normal">Local</span>
+              <span className="ml-2 text-xs text-text-secondary font-normal">Local</span>
             )}
           </h3>
           <button
             onClick={onClose}
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg"
+            className="text-text-secondary hover:text-text-primary text-lg"
           >
             &times;
           </button>
@@ -157,7 +157,7 @@ export default function GAFlightEditPanel({ flightId, onClose }: Props) {
           <div>
             <div className={labelCls}>Capacity</div>
             <select
-              className={inputCls + ' [color-scheme:dark]'}
+              className={inputCls}
               value={form.operating_capacity ?? ''}
               onChange={(e) => set('operating_capacity', e.target.value)}
             >
@@ -186,15 +186,15 @@ export default function GAFlightEditPanel({ flightId, onClose }: Props) {
           <button
             onClick={handleSave}
             disabled={mutation.isPending}
-            className="px-4 py-1.5 rounded bg-[var(--accent)] text-black text-sm font-medium hover:bg-[var(--accent-dim)] disabled:opacity-50 transition-colors"
+            className="px-4 py-1.5 rounded bg-accent text-white text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             {mutation.isPending ? 'Saving...' : 'Save'}
           </button>
           {mutation.isSuccess && (
-            <span className="text-sm text-green-400 self-center">Saved</span>
+            <span className="text-sm text-green-600 self-center">Saved</span>
           )}
           {mutation.isError && (
-            <span className="text-sm text-red-400 self-center">
+            <span className="text-sm text-red-600 self-center">
               {(mutation.error as Error).message}
             </span>
           )}

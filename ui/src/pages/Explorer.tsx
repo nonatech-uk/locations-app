@@ -28,7 +28,7 @@ export default function Explorer() {
   return (
     <div className="flex flex-col h-full">
       {/* Controls bar */}
-      <div className="flex items-center gap-4 px-4 py-3 bg-[var(--bg-secondary)] border-b border-white/10">
+      <div className="flex items-center gap-4 px-4 py-3 bg-bg-secondary border-b border-border">
         <label className="flex items-center gap-2 text-sm">
           From
           <input
@@ -37,7 +37,7 @@ export default function Explorer() {
             min={bounds.data?.earliest}
             max={end}
             onChange={(e) => setStart(e.target.value)}
-            className="bg-[var(--bg-primary)] border border-white/20 rounded px-2 py-1 text-sm text-[var(--text-primary)] [color-scheme:dark]"
+            className="bg-bg-card border border-border rounded px-2 py-1 text-sm text-text-primary"
           />
         </label>
         <label className="flex items-center gap-2 text-sm">
@@ -48,15 +48,15 @@ export default function Explorer() {
             min={start}
             max={bounds.data?.latest}
             onChange={(e) => setEnd(e.target.value)}
-            className="bg-[var(--bg-primary)] border border-white/20 rounded px-2 py-1 text-sm text-[var(--text-primary)] [color-scheme:dark]"
+            className="bg-bg-card border border-border rounded px-2 py-1 text-sm text-text-primary"
           />
         </label>
 
         {data && (
-          <span className="text-xs text-[var(--text-secondary)] ml-auto">
+          <span className="text-xs text-text-secondary ml-auto">
             {data.returned_count.toLocaleString()} points
             {data.simplified && (
-              <span className="ml-1 text-amber-400" title={`${data.total_count.toLocaleString()} total`}>
+              <span className="ml-1 text-amber-600" title={`${data.total_count.toLocaleString()} total`}>
                 (simplified from {data.total_count.toLocaleString()})
               </span>
             )}
@@ -68,11 +68,11 @@ export default function Explorer() {
       <div className="flex-1 relative">
         {isLoading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-black/40">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-accent border-t-transparent" />
           </div>
         )}
         {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-red-900/80 text-red-200 px-4 py-2 rounded text-sm">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded text-sm">
             {(error as Error).message}
           </div>
         )}

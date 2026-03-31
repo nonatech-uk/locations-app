@@ -17,10 +17,10 @@ export default function Flights() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[var(--bg-secondary)] border-b border-white/10">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Flights</h2>
+      <div className="flex items-center justify-between px-4 py-3 bg-bg-secondary border-b border-border">
+        <h2 className="text-lg font-semibold text-text-primary">Flights</h2>
         {data && (
-          <span className="text-xs text-[var(--text-secondary)]">
+          <span className="text-xs text-text-secondary">
             {data.total_count.toLocaleString()} flights
           </span>
         )}
@@ -30,12 +30,12 @@ export default function Flights() {
       <div className="flex-1 overflow-auto">
         {isLoading && (
           <div className="flex items-center justify-center h-40">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-accent border-t-transparent" />
           </div>
         )}
 
         {error && (
-          <div className="m-4 bg-red-900/80 text-red-200 px-4 py-2 rounded text-sm">
+          <div className="m-4 bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded text-sm">
             {(error as Error).message}
           </div>
         )}
@@ -44,7 +44,7 @@ export default function Flights() {
           <>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+                <tr className="border-b border-border text-left text-xs text-text-secondary uppercase tracking-wider">
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Route</th>
                   <th className="px-3 py-2">Flight</th>
@@ -71,11 +71,11 @@ export default function Flights() {
 
             {/* Pagination */}
             {data.total_pages > 1 && (
-              <div className="flex items-center justify-center gap-2 py-4 border-t border-white/10">
+              <div className="flex items-center justify-center gap-2 py-4 border-t border-border">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 rounded text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] disabled:opacity-30 hover:bg-white/10 transition-colors"
+                  className="px-3 py-1 rounded text-sm border border-border text-text-primary disabled:opacity-30 hover:bg-bg-hover transition-colors"
                 >
                   Prev
                 </button>
@@ -89,15 +89,15 @@ export default function Flights() {
                   }, [])
                   .map((item, i) =>
                     item === '...' ? (
-                      <span key={`gap-${i}`} className="px-1 text-[var(--text-secondary)]">...</span>
+                      <span key={`gap-${i}`} className="px-1 text-text-secondary">...</span>
                     ) : (
                       <button
                         key={item}
                         onClick={() => setPage(item as number)}
                         className={`px-3 py-1 rounded text-sm transition-colors ${
                           page === item
-                            ? 'bg-[var(--accent)] text-black font-medium'
-                            : 'bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-white/10'
+                            ? 'bg-accent text-white font-medium'
+                            : 'border border-border text-text-primary hover:bg-bg-hover'
                         }`}
                       >
                         {item}
@@ -108,7 +108,7 @@ export default function Flights() {
                 <button
                   onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
                   disabled={page === data.total_pages}
-                  className="px-3 py-1 rounded text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] disabled:opacity-30 hover:bg-white/10 transition-colors"
+                  className="px-3 py-1 rounded text-sm border border-border text-text-primary disabled:opacity-30 hover:bg-bg-hover transition-colors"
                 >
                   Next
                 </button>

@@ -15,3 +15,11 @@ export function fetchFlight(id: number): Promise<FlightDetail> {
 export function updateFlight(id: number, data: FlightUpdate): Promise<FlightDetail> {
   return apiMutate<FlightDetail>(`/flights/${id}`, 'PATCH', data)
 }
+
+export async function deleteFlight(id: number): Promise<void> {
+  const url = new URL(`/api/v1/flights/${id}`, window.location.origin)
+  const res = await fetch(url.toString(), { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`)
+  }
+}

@@ -26,32 +26,32 @@ export default function GAFlightRow({ flight, isSelected, onSelect }: Props) {
       )}
       <tr
         onClick={onSelect}
-        className={`cursor-pointer border-b border-white/5 transition-colors ${
-          isSelected ? 'bg-[var(--bg-surface)]' : 'hover:bg-white/5'
+        className={`cursor-pointer border-b border-border transition-colors ${
+          isSelected ? 'bg-accent/10' : 'hover:bg-bg-hover'
         }`}
       >
         <td className="px-3 py-2 text-sm whitespace-nowrap">{flight.date}</td>
         <td className="px-3 py-2 text-sm">
           {flight.is_local ? (
-            <span className="text-[var(--accent)]">{flight.dep_airport}</span>
+            <span className="text-accent font-medium">{flight.dep_airport}</span>
           ) : (
             <>
-              <span className="text-[var(--accent)]">{flight.dep_airport}</span>
-              <span className="text-[var(--text-secondary)] mx-1">&rarr;</span>
-              <span className="text-[var(--accent)]">{flight.arr_airport}</span>
+              <span className="text-accent font-medium">{flight.dep_airport}</span>
+              <span className="text-text-secondary mx-1">&rarr;</span>
+              <span className="text-accent font-medium">{flight.arr_airport}</span>
             </>
           )}
         </td>
         <td className="px-3 py-2 text-sm">{flight.aircraft_type ?? '—'}</td>
-        <td className="px-3 py-2 text-sm text-[var(--text-secondary)]">{flight.registration ?? '—'}</td>
-        <td className="px-3 py-2 text-sm text-[var(--text-secondary)]">{flight.captain ?? '—'}</td>
+        <td className="px-3 py-2 text-sm text-text-secondary">{flight.registration ?? '—'}</td>
+        <td className="px-3 py-2 text-sm text-text-secondary">{flight.captain ?? '—'}</td>
         <td className="px-3 py-2 text-sm text-center">
           {flight.operating_capacity ? CAP_LABELS[flight.operating_capacity] ?? flight.operating_capacity : '—'}
         </td>
         <td className="px-3 py-2 text-sm whitespace-nowrap text-right tabular-nums">
           {flight.hours_total?.toFixed(1) ?? '—'}
         </td>
-        <td className="px-3 py-2 text-sm text-[var(--text-secondary)] max-w-[200px] truncate">
+        <td className="px-3 py-2 text-sm text-text-secondary max-w-[200px] truncate">
           {flight.exercise ?? ''}
         </td>
         <td className="px-2 py-1">
@@ -65,7 +65,7 @@ export default function GAFlightRow({ flight, isSelected, onSelect }: Props) {
               }
             />
           ) : (
-            <div className="h-10 w-16 rounded bg-white/5 flex items-center justify-center text-xs text-[var(--text-secondary)]">—</div>
+            <div className="h-10 w-16 rounded bg-bg-hover flex items-center justify-center text-xs text-text-secondary">—</div>
           )}
         </td>
         <td className="px-2 py-1">
@@ -79,7 +79,7 @@ export default function GAFlightRow({ flight, isSelected, onSelect }: Props) {
               }
             />
           ) : (
-            <div className="h-10 w-16 rounded bg-white/5 flex items-center justify-center text-xs text-[var(--text-secondary)]">—</div>
+            <div className="h-10 w-16 rounded bg-bg-hover flex items-center justify-center text-xs text-text-secondary">—</div>
           )}
         </td>
       </tr>

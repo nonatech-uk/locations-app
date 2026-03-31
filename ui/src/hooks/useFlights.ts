@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchFlight, fetchFlights, updateFlight } from '../api/flights'
+import { deleteFlight, fetchFlight, fetchFlights, updateFlight } from '../api/flights'
 import type { FlightUpdate } from '../api/types'
 
 export function useFlights(page: number, perPage: number) {
@@ -25,6 +25,16 @@ export function useUpdateFlight() {
     mutationFn: ({ id, data }: { id: number; data: FlightUpdate }) => updateFlight(id, data),
     onSuccess: (_result, { id }) => {
       qc.invalidateQueries({ queryKey: ['flight', id] })
+      qc.invalidateQueries({ queryKey: ['flights'] })
+    },
+  })
+}
+
+export function useDeleteFlight() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => deleteFlight(id),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['flights'] })
     },
   })

@@ -13,7 +13,8 @@ interface Props {
 
 export default function FlightRow({ flight, isSelected, onSelect }: Props) {
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
-  const isFuture = flight.date > new Date().toISOString().split('T')[0]
+  const isRoute = flight.is_route
+  const isFuture = !isRoute && flight.date > new Date().toISOString().split('T')[0]
 
   const handleImgClick = (e: React.MouseEvent, src: string, alt: string) => {
     e.stopPropagation()
@@ -27,33 +28,46 @@ export default function FlightRow({ flight, isSelected, onSelect }: Props) {
       )}
       <tr
         onClick={onSelect}
-        className={`cursor-pointer border-b border-white/5 transition-colors ${
-          isFuture ? 'border-l-2 border-l-amber-400/70' : ''
+        className={`cursor-pointer border-b border-border transition-colors ${
+          isRoute ? 'border-l-2 border-l-blue-500' : isFuture ? 'border-l-2 border-l-amber-500' : ''
         } ${
           isSelected
-            ? 'bg-[var(--bg-surface)]'
-            : isFuture
-              ? 'bg-amber-400/5 hover:bg-amber-400/10'
-              : 'hover:bg-white/5'
+            ? 'bg-accent/10'
+            : isRoute
+              ? 'bg-blue-50 hover:bg-blue-100/60'
+              : isFuture
+                ? 'bg-amber-50 hover:bg-amber-100/60'
+                : 'hover:bg-bg-hover'
         }`}
       >
         <td className="px-3 py-2 text-sm whitespace-nowrap">
-          {flight.date}
-          {isFuture && <span className="ml-1.5 text-[10px] text-amber-400/80 uppercase tracking-wider">upcoming</span>}
+          {isRoute ? (
+            <>
+              <span className="text-blue-600 text-xs uppercase tracking-wider">Route</span>
+              {flight.times_flown && (
+                <span className="ml-1.5 text-[10px] text-text-secondary">&times;{flight.times_flown}</span>
+              )}
+            </>
+          ) : (
+            <>
+              {flight.date}
+              {isFuture && <span className="ml-1.5 text-[10px] text-amber-600 uppercase tracking-wider">upcoming</span>}
+            </>
+          )}
         </td>
         <td className="px-3 py-2 text-sm">
-          <span className="text-[var(--accent)]">{flight.dep_airport}</span>
-          <span className="text-[var(--text-secondary)] mx-1">&rarr;</span>
-          <span className="text-[var(--accent)]">{flight.arr_airport}</span>
+          <span className="text-accent font-medium">{flight.dep_airport}</span>
+          <span className="text-text-secondary mx-1">&rarr;</span>
+          <span className="text-accent font-medium">{flight.arr_airport}</span>
         </td>
         <td className="px-3 py-2 text-sm">{flight.flight_number ?? '—'}</td>
-        <td className="px-3 py-2 text-sm text-[var(--text-secondary)]">{flight.airline ?? '—'}</td>
-        <td className="px-3 py-2 text-sm text-[var(--text-secondary)]">{flight.aircraft_type ?? '—'}</td>
+        <td className="px-3 py-2 text-sm text-text-secondary">{flight.airline ?? '—'}</td>
+        <td className="px-3 py-2 text-sm text-text-secondary">{flight.aircraft_type ?? '—'}</td>
         <td className="px-3 py-2 text-sm whitespace-nowrap">{flight.duration ?? '—'}</td>
         <td className="px-3 py-2 text-sm text-center">
           {flight.flight_class ? CLASS_SHORT[flight.flight_class] ?? '?' : '—'}
         </td>
-        <td className="px-3 py-2 text-sm text-[var(--text-secondary)] max-w-[200px] truncate">
+        <td className="px-3 py-2 text-sm text-text-secondary max-w-[200px] truncate">
           {flight.notes ?? ''}
         </td>
         <td className="px-2 py-1">
@@ -67,7 +81,7 @@ export default function FlightRow({ flight, isSelected, onSelect }: Props) {
               }
             />
           ) : (
-            <div className="h-10 w-16 rounded bg-white/5 flex items-center justify-center text-xs text-[var(--text-secondary)]">—</div>
+            <div className="h-10 w-16 rounded bg-bg-hover flex items-center justify-center text-xs text-text-secondary">—</div>
           )}
         </td>
         <td className="px-2 py-1">
@@ -81,7 +95,7 @@ export default function FlightRow({ flight, isSelected, onSelect }: Props) {
               }
             />
           ) : (
-            <div className="h-10 w-16 rounded bg-white/5 flex items-center justify-center text-xs text-[var(--text-secondary)]">—</div>
+            <div className="h-10 w-16 rounded bg-bg-hover flex items-center justify-center text-xs text-text-secondary">—</div>
           )}
         </td>
       </tr>

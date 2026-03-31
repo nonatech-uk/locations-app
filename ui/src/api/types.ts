@@ -44,6 +44,8 @@ export interface FlightSummary {
   flight_class: number | null
   seat_number: string | null
   notes: string | null
+  is_route: boolean
+  times_flown: number | null
   has_route_image: boolean
   has_aircraft_image: boolean
 }
@@ -89,6 +91,8 @@ export interface FlightDetail {
   arr_lat: number | null
   arr_lon: number | null
   distance_km: number | null
+  is_route: boolean
+  times_flown: number | null
   has_route_image: boolean
   has_aircraft_image: boolean
 }
@@ -103,6 +107,8 @@ export interface FlightUpdate {
   aircraft_type?: string
   flight_number?: string
   airline?: string
+  is_route?: boolean
+  times_flown?: number
 }
 
 export interface FlightListResponse {

@@ -13,7 +13,7 @@ export default function ImageLightbox({ src, alt, onClose }: Props) {
       <div className="relative max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={onClose}
-          className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-[var(--bg-secondary)] text-[var(--text-primary)] flex items-center justify-center hover:bg-[var(--bg-surface)] transition-colors text-lg"
+          className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-bg-secondary text-text-primary flex items-center justify-center hover:bg-bg-hover shadow transition-colors text-lg"
         >
           &times;
         </button>

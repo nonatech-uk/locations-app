@@ -27,7 +27,7 @@ def get_all_flights(cur):
         SELECT date, flight_number, dep_airport, dep_airport_name, arr_airport, arr_airport_name,
                dep_time, arr_time, duration, airline, airline_code, aircraft_type, aircraft_code,
                registration, seat_number, seat_type, flight_class, flight_reason, notes, source,
-               dep_lat, dep_lon, arr_lat, arr_lon, distance_km
+               dep_lat, dep_lon, arr_lat, arr_lon, distance_km, is_route, times_flown
         FROM flights
         ORDER BY date DESC, dep_time DESC
     """)
@@ -37,9 +37,10 @@ def get_all_flights(cur):
 
 def calculate_statistics(flights):
     """Calculate comprehensive flight statistics."""
+    actual_flights = [f for f in flights if not f.get('is_route')]
     stats = {
-        'total_flights': len(flights),
-        'total_distance_km': sum(f['distance_km'] or 0 for f in flights),
+        'total_flights': len(actual_flights),
+        'total_distance_km': sum(f['distance_km'] or 0 for f in actual_flights),
         'flights_with_duration': [],
         'flights_by_year': defaultdict(int),
         'flights_by_airline': defaultdict(int),
@@ -61,8 +62,10 @@ def calculate_statistics(flights):
     total_minutes = 0
 
     for f in flights:
-        # Year stats
-        if f['date']:
+        is_route = f.get('is_route', False)
+
+        # Year stats (actual flights only)
+        if f['date'] and not is_route:
             year = f['date'].year
             stats['flights_by_year'][year] += 1
 

@@ -52,6 +52,8 @@ class FlightSummary(BaseModel):
     flight_class: int | None = None
     seat_number: str | None = None
     notes: str | None = None
+    is_route: bool = False
+    times_flown: int | None = None
     has_route_image: bool = False
     has_aircraft_image: bool = False
 
@@ -97,6 +99,8 @@ class FlightDetail(BaseModel):
     arr_lat: float | None = None
     arr_lon: float | None = None
     distance_km: int | None = None
+    is_route: bool = False
+    times_flown: int | None = None
     has_route_image: bool = False
     has_aircraft_image: bool = False
 
@@ -111,6 +115,8 @@ class FlightUpdate(BaseModel):
     aircraft_type: str | None = None
     flight_number: str | None = None
     airline: str | None = None
+    is_route: bool | None = None
+    times_flown: int | None = None
 
 
 class FlightListResponse(BaseModel):

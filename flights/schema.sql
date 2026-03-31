@@ -64,6 +64,10 @@ CREATE TABLE IF NOT EXISTS flights (
     arr_lon DOUBLE PRECISION,
     distance_km INTEGER,
 
+    -- Route records (routes flown multiple times, not specific dated flights)
+    is_route BOOLEAN DEFAULT FALSE,
+    times_flown INTEGER,
+
     UNIQUE(date, dep_airport, arr_airport, flight_number)
 );
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useFlight, useUpdateFlight } from '../../hooks/useFlights'
+import { useDeleteFlight, useFlight, useUpdateFlight } from '../../hooks/useFlights'
 import { apiImageUrl } from '../../api/client'
 import type { FlightUpdate } from '../../api/types'
 import ImageLightbox from './ImageLightbox'
@@ -16,8 +16,10 @@ interface Props {
 export default function FlightEditPanel({ flightId, onClose }: Props) {
   const { data: flight, isLoading } = useFlight(flightId)
   const mutation = useUpdateFlight()
+  const deleteMutation = useDeleteFlight()
   const [form, setForm] = useState<FlightUpdate>({})
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (flight) {
@@ -31,6 +33,8 @@ export default function FlightEditPanel({ flightId, onClose }: Props) {
         aircraft_type: flight.aircraft_type ?? '',
         flight_number: flight.flight_number ?? '',
         airline: flight.airline ?? '',
+        is_route: flight.is_route ?? false,
+        times_flown: flight.times_flown ?? undefined,
       })
     }
   }, [flight])
@@ -38,8 +42,8 @@ export default function FlightEditPanel({ flightId, onClose }: Props) {
   if (isLoading || !flight) {
     return (
       <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60" onClick={onClose}>
-        <div className="bg-[var(--bg-secondary)] border border-white/10 rounded-lg p-10">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[var(--accent)] border-t-transparent" />
+        <div className="bg-bg-secondary border border-border rounded-lg p-10 shadow-lg">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-accent border-t-transparent" />
         </div>
       </div>
     )
@@ -49,19 +53,19 @@ export default function FlightEditPanel({ flightId, onClose }: Props) {
     mutation.mutate({ id: flightId, data: form })
   }
 
-  const set = (key: keyof FlightUpdate, value: string | number | undefined) => {
+  const set = (key: keyof FlightUpdate, value: string | number | boolean | undefined) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
   const inputCls =
-    'bg-[var(--bg-primary)] border border-white/20 rounded px-2 py-1 text-sm text-[var(--text-primary)] w-full'
-  const selectCls = inputCls + ' [color-scheme:dark]'
-  const labelCls = 'text-xs text-[var(--text-secondary)] mb-1'
+    'bg-bg-card border border-border rounded px-2 py-1 text-sm text-text-primary w-full'
+  const selectCls = inputCls
+  const labelCls = 'text-xs text-text-secondary mb-1'
 
   return (
     <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="bg-[var(--bg-secondary)] border border-white/10 rounded-lg p-5 w-[90vw] max-w-4xl max-h-[85vh] overflow-y-auto"
+        className="bg-bg-secondary border border-border rounded-lg p-5 w-[90vw] max-w-4xl max-h-[85vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
       {lightbox && (
@@ -69,12 +73,12 @@ export default function FlightEditPanel({ flightId, onClose }: Props) {
       )}
 
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[var(--accent)] font-semibold">
-          {flight.dep_airport} &rarr; {flight.arr_airport} &mdash; {flight.date}
+        <h3 className="text-accent font-semibold">
+          {flight.dep_airport} &rarr; {flight.arr_airport} &mdash; {flight.is_route ? 'Route Record' : flight.date}
         </h3>
         <button
           onClick={onClose}
-          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-lg"
+          className="text-text-secondary hover:text-text-primary text-lg"
         >
           &times;
         </button>
@@ -199,6 +203,33 @@ export default function FlightEditPanel({ flightId, onClose }: Props) {
         </div>
       </div>
 
+      {/* Route record */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="flex items-center gap-2 col-span-2">
+          <input
+            type="checkbox"
+            id="is_route"
+            checked={form.is_route ?? false}
+            onChange={(e) => set('is_route', e.target.checked)}
+            className="accent-accent"
+          />
+          <label htmlFor="is_route" className="text-sm text-text-secondary">Route record (not a specific flight)</label>
+        </div>
+        {form.is_route && (
+          <div>
+            <div className={labelCls}>Times Flown</div>
+            <input
+              type="number"
+              min="1"
+              className={inputCls}
+              value={form.times_flown ?? ''}
+              onChange={(e) => set('times_flown', e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="approximate"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Notes */}
       <div className="mb-4">
         <div className={labelCls}>Notes</div>
@@ -209,22 +240,49 @@ export default function FlightEditPanel({ flightId, onClose }: Props) {
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <button
           onClick={handleSave}
           disabled={mutation.isPending}
-          className="px-4 py-1.5 rounded bg-[var(--accent)] text-black text-sm font-medium hover:bg-[var(--accent-dim)] disabled:opacity-50 transition-colors"
+          className="px-4 py-1.5 rounded bg-accent text-white text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
         >
           {mutation.isPending ? 'Saving...' : 'Save'}
         </button>
         {mutation.isSuccess && (
-          <span className="text-sm text-green-400 self-center">Saved</span>
+          <span className="text-sm text-green-600 self-center">Saved</span>
         )}
         {mutation.isError && (
-          <span className="text-sm text-red-400 self-center">
+          <span className="text-sm text-red-600 self-center">
             {(mutation.error as Error).message}
           </span>
         )}
+        <div className="ml-auto">
+          {confirmDelete ? (
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-red-600">Delete this flight?</span>
+              <button
+                onClick={() => deleteMutation.mutate(flightId, { onSuccess: onClose })}
+                disabled={deleteMutation.isPending}
+                className="px-3 py-1.5 rounded bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-3 py-1.5 rounded border border-border text-sm text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="px-3 py-1.5 rounded border border-red-300 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              Delete
+            </button>
+          )}
+        </div>
       </div>
       </div>
     </div>

@@ -8,8 +8,8 @@ const links = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-48 shrink-0 bg-[var(--bg-secondary)] border-r border-white/10 flex flex-col">
-      <div className="p-4 text-lg font-semibold text-[var(--accent)]">
+    <aside className="w-48 shrink-0 bg-bg-secondary border-r border-border flex flex-col">
+      <div className="p-4 text-lg font-semibold text-accent">
         My Locations
       </div>
       <nav className="flex flex-col gap-1 px-2">
@@ -20,8 +20,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `px-3 py-2 rounded text-sm transition-colors ${
                 isActive
-                  ? 'bg-[var(--bg-surface)] text-[var(--accent)]'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5'
+                  ? 'bg-accent/15 text-accent font-medium'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
               }`
             }
           >

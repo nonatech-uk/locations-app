@@ -15,12 +15,15 @@ def overview(conn=Depends(get_conn)):
     counts = {}
     for table, key in [
         ("gps_points", "gps_points"),
-        ("flights", "flights"),
         ("skiing_days", "skiing_days"),
         ("ga_flights", "ga_flights"),
     ]:
         cur.execute(f"SELECT count(*) FROM {table}")  # noqa: S608
         counts[key] = cur.fetchone()[0]
+
+    # Exclude route records from flight count
+    cur.execute("SELECT count(*) FROM flights WHERE NOT is_route")
+    counts["flights"] = cur.fetchone()[0]
 
     cur.close()
     return OverviewStats(**counts)

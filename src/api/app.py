@@ -63,4 +63,7 @@ if STATIC_DIR.is_dir():
         file_path = STATIC_DIR / full_path
         if full_path and file_path.is_file():
             return FileResponse(file_path)
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(
+            STATIC_DIR / "index.html",
+            headers={"Cache-Control": "no-cache, must-revalidate"},
+        )

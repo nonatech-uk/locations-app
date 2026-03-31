@@ -23,9 +23,12 @@ def get_points(
     # End date is inclusive — query up to start of next day
     end_exclusive = end + timedelta(days=1)
 
+    # Exclude pet trackers (Tractive) by default
+    source_filter = "AND source_type != 'tractive'"
+
     # Get total count for the range
     cur.execute(
-        "SELECT count(*) FROM gps_points WHERE ts >= %s AND ts < %s",
+        f"SELECT count(*) FROM gps_points WHERE ts >= %s AND ts < %s {source_filter}",
         (start, end_exclusive),
     )
     total_count = cur.fetchone()[0]
@@ -40,13 +43,13 @@ def get_points(
     if simplified:
         nth = total_count // MAX_POINTS + 1
         cur.execute(
-            """
+            f"""
             SELECT lat, lon, ts, speed_mph, altitude_m
             FROM (
                 SELECT lat, lon, ts, speed_mph, altitude_m,
                        row_number() OVER (ORDER BY ts) AS rn
                 FROM gps_points
-                WHERE ts >= %s AND ts < %s
+                WHERE ts >= %s AND ts < %s {source_filter}
             ) sub
             WHERE rn %% %s = 1
             ORDER BY ts
@@ -55,10 +58,10 @@ def get_points(
         )
     else:
         cur.execute(
-            """
+            f"""
             SELECT lat, lon, ts, speed_mph, altitude_m
             FROM gps_points
-            WHERE ts >= %s AND ts < %s
+            WHERE ts >= %s AND ts < %s {source_filter}
             ORDER BY ts
             """,
             (start, end_exclusive),
@@ -81,7 +84,7 @@ def get_points(
 @router.get("/bounds", response_model=GpsBoundsResponse)
 def get_bounds(conn=Depends(get_conn)):
     cur = conn.cursor()
-    cur.execute("SELECT min(ts)::date, max(ts)::date, count(*) FROM gps_points")
+    cur.execute("SELECT min(ts)::date, max(ts)::date, count(*) FROM gps_points WHERE source_type != 'tractive'")
     row = cur.fetchone()
     cur.close()
 

@@ -85,7 +85,8 @@ LIST_SQL = """
     SELECT id, date, dep_airport, arr_airport, dep_airport_name, arr_airport_name,
            flight_number, airline, aircraft_type, registration, duration,
            distance_km, flight_class, seat_number, notes,
-           dep_lat, dep_lon, arr_lat, arr_lon
+           dep_lat, dep_lon, arr_lat, arr_lon,
+           is_route, times_flown
     FROM flights
     ORDER BY date DESC, dep_time ASC NULLS LAST
     LIMIT %s OFFSET %s
@@ -150,6 +151,8 @@ def list_flights(
             flight_class=r[12],
             seat_number=r[13],
             notes=r[14],
+            is_route=r[19] or False,
+            times_flown=r[20],
             has_route_image=has_route_image(dep_apt, arr_apt),
             has_aircraft_image=has_aircraft_image(reg),
         ))
@@ -178,7 +181,8 @@ DETAIL_SQL = """
            route_distance, runway_origin, runway_destination, codeshares,
            seat_number, seat_type, flight_class, flight_reason,
            notes, source, gps_matched,
-           dep_lat, dep_lon, arr_lat, arr_lon, distance_km
+           dep_lat, dep_lon, arr_lat, arr_lon, distance_km,
+           is_route, times_flown
     FROM flights WHERE id = %s
 """
 
@@ -218,6 +222,8 @@ def get_flight(flight_id: int, conn=Depends(get_conn)):
         notes=r[32], source=r[33], gps_matched=r[34],
         dep_lat=r[35], dep_lon=r[36], arr_lat=r[37], arr_lon=r[38],
         distance_km=r[39],
+        is_route=r[40] or False,
+        times_flown=r[41],
         has_route_image=has_route_image(r[3], r[6]),
         has_aircraft_image=has_aircraft_image(r[16]),
     )
@@ -228,6 +234,7 @@ def get_flight(flight_id: int, conn=Depends(get_conn)):
 UPDATABLE_FIELDS = {
     "notes", "seat_number", "seat_type", "flight_class", "flight_reason",
     "registration", "aircraft_type", "flight_number", "airline",
+    "is_route", "times_flown",
 }
 
 
@@ -250,6 +257,21 @@ def update_flight(flight_id: int, update: FlightUpdate, conn=Depends(get_conn)):
         raise HTTPException(404, "Flight not found")
 
     return get_flight(flight_id, conn)
+
+
+# --- Delete ---
+
+
+@router.delete("/{flight_id}", status_code=204)
+def delete_flight(flight_id: int, conn=Depends(get_conn)):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM flights WHERE id = %s RETURNING id", (flight_id,))
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+
+    if not row:
+        raise HTTPException(404, "Flight not found")
 
 
 # --- Images ---

@@ -21,7 +21,7 @@ ROUTE_FULL = (800, 500)
 AIRCRAFT_THUMB = (200, 150)
 AIRCRAFT_FULL = (800, 600)
 
-DARK_TILES = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+LIGHT_TILES = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 PLANESPOTTERS_API = "https://api.planespotters.net/pub/photos/reg"
 
 
@@ -97,18 +97,18 @@ def _render_route_map(
     dep_lat: float, dep_lon: float, arr_lat: float, arr_lon: float, width: int, height: int
 ) -> bytes:
     """Render a static map with a great circle arc between two airports."""
-    m = StaticMap(width, height, url_template=DARK_TILES)
+    m = StaticMap(width, height, url_template=LIGHT_TILES)
 
     # Great circle intermediate points
     gc_points = _intermediate_points(dep_lat, dep_lon, arr_lat, arr_lon)
     coords = [(lon, lat) for lat, lon in gc_points]
 
-    line = Line(coords, "#4ecdc4", 3)
+    line = Line(coords, "#4f46e5", 3)
     m.add_line(line)
 
     # Airport markers
-    m.add_marker(CircleMarker((dep_lon, dep_lat), "#4ecdc4", 6))
-    m.add_marker(CircleMarker((arr_lon, arr_lat), "#4ecdc4", 6))
+    m.add_marker(CircleMarker((dep_lon, dep_lat), "#4f46e5", 6))
+    m.add_marker(CircleMarker((arr_lon, arr_lat), "#4f46e5", 6))
 
     img = m.render()
     buf = BytesIO()
@@ -118,8 +118,8 @@ def _render_route_map(
 
 def _render_local_map(lat: float, lon: float, width: int, height: int) -> bytes:
     """Render a static map centred on a single airport (for local flights)."""
-    m = StaticMap(width, height, url_template=DARK_TILES)
-    m.add_marker(CircleMarker((lon, lat), "#4ecdc4", 8))
+    m = StaticMap(width, height, url_template=LIGHT_TILES)
+    m.add_marker(CircleMarker((lon, lat), "#4f46e5", 8))
     img = m.render(zoom=12)
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)
