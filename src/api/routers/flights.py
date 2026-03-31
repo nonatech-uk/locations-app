@@ -307,9 +307,11 @@ def get_flight_image(
         media_type = "image/jpeg"
 
     if not path.exists():
-        raise HTTPException(404, "Image not yet available")
+        raise HTTPException(404, "Image not yet available",
+                            headers={"Cache-Control": "no-store"})
 
-    return FileResponse(path, media_type=media_type)
+    return FileResponse(path, media_type=media_type,
+                        headers={"Cache-Control": "public, max-age=86400"})
 
 
 # --- Bulk prefetch ---

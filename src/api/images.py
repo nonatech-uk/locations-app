@@ -2,6 +2,7 @@
 
 import logging
 import math
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
@@ -23,6 +24,18 @@ AIRCRAFT_FULL = (800, 600)
 
 LIGHT_TILES = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 PLANESPOTTERS_API = "https://api.planespotters.net/pub/photos/reg"
+
+
+def _atomic_write(path: Path, data: bytes) -> None:
+    """Write bytes to path atomically via tmp+rename so readers never see partial files."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with open(fd, "wb") as f:
+            f.write(data)
+        Path(tmp).rename(path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _cache_dir() -> Path:
@@ -140,13 +153,13 @@ def prefetch_route_image(dep_airport: str, arr_airport: str, dep_lat: float, dep
             full_data = _render_route_map(dep_lat, dep_lon, arr_lat, arr_lon, ROUTE_FULL[0], ROUTE_FULL[1])
 
         full_path = route_image_path(dep_airport, arr_airport, "full")
-        full_path.write_bytes(full_data)
+        _atomic_write(full_path, full_data)
 
         img = Image.open(BytesIO(full_data))
         img.thumbnail(ROUTE_THUMB, Image.Resampling.LANCZOS)
         buf = BytesIO()
         img.save(buf, format="PNG", optimize=True)
-        thumb_path.write_bytes(buf.getvalue())
+        _atomic_write(thumb_path, buf.getvalue())
 
         log.info("Route images cached for %s→%s", dep_airport, arr_airport)
         return True
@@ -188,11 +201,15 @@ def prefetch_aircraft_image(registration: str) -> bool:
         full_img = img.copy()
         full_img.thumbnail(AIRCRAFT_FULL, Image.Resampling.LANCZOS)
         full_path = aircraft_image_path(registration, "full")
-        full_img.save(full_path, format="JPEG", quality=85)
+        buf_full = BytesIO()
+        full_img.save(buf_full, format="JPEG", quality=85)
+        _atomic_write(full_path, buf_full.getvalue())
 
         thumb_img = img.copy()
         thumb_img.thumbnail(AIRCRAFT_THUMB, Image.Resampling.LANCZOS)
-        thumb_img.save(thumb_path, format="JPEG", quality=80)
+        buf_thumb = BytesIO()
+        thumb_img.save(buf_thumb, format="JPEG", quality=80)
+        _atomic_write(thumb_path, buf_thumb.getvalue())
 
         log.info("Aircraft images cached for %s", registration)
         return True
