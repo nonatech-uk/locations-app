@@ -192,3 +192,72 @@ class GAFlightListResponse(BaseModel):
     page: int
     per_page: int
     total_pages: int
+
+
+# --- Place Types ---
+
+
+class PlaceTypeCreate(BaseModel):
+    name: str
+
+
+class PlaceTypeResponse(BaseModel):
+    id: int
+    name: str
+
+
+class PlaceTypeListResponse(BaseModel):
+    items: list[PlaceTypeResponse]
+    total_count: int
+
+
+# --- Places ---
+
+
+class PlaceCreate(BaseModel):
+    name: str
+    place_type_id: int
+    lat: float
+    lon: float
+    distance_m: int = 200
+    date_from: date | None = None
+    date_to: date | None = None
+    notes: str | None = None
+
+
+class PlaceUpdate(BaseModel):
+    name: str | None = None
+    place_type_id: int | None = None
+    lat: float | None = None
+    lon: float | None = None
+    distance_m: int | None = None
+    date_from: date | None = None
+    date_to: date | None = None
+    notes: str | None = None
+
+
+class PlaceSummary(BaseModel):
+    id: int
+    name: str
+    place_type_id: int
+    place_type_name: str
+    lat: float
+    lon: float
+    distance_m: int
+    date_from: date | None = None
+    date_to: date | None = None
+    notes: str | None = None
+
+
+class PlaceListResponse(BaseModel):
+    items: list[PlaceSummary]
+    total_count: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
+class PlaceLookupResult(BaseModel):
+    place: PlaceSummary | None = None
+    distance_m: float | None = None
+    source: str

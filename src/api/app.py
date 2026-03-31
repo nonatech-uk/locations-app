@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.settings import settings
 from src.api.deps import close_pool, init_pool
-from src.api.routers import flights, ga, gps, owntracks, skiing, stats
+from src.api.routers import flights, ga, gps, owntracks, place_types, places, skiing, stats
 
 STATIC_DIR = Path(_project_root) / "static"
 
@@ -46,6 +46,8 @@ app.include_router(flights.router, prefix="/api/v1", tags=["flights"])
 app.include_router(skiing.router, prefix="/api/v1", tags=["skiing"])
 app.include_router(ga.router, prefix="/api/v1", tags=["ga"])
 app.include_router(stats.router, prefix="/api/v1", tags=["stats"])
+app.include_router(place_types.router, prefix="/api/v1", tags=["place_types"])
+app.include_router(places.router, prefix="/api/v1", tags=["places"])
 app.include_router(owntracks.router, tags=["owntracks"])
 
 
