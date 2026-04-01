@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { LatLngTuple } from 'leaflet'
 import LocationMap from '../components/map/LocationMap'
 import { useGpsBounds, useGpsPoints } from '../hooks/useGpsPoints'
@@ -15,9 +16,11 @@ function defaultRange(): [string, string] {
 }
 
 export default function Explorer() {
+  const [searchParams] = useSearchParams()
   const [defaults] = useState(defaultRange)
-  const [start, setStart] = useState(defaults[0])
-  const [end, setEnd] = useState(defaults[1])
+  const dateParam = searchParams.get('date')
+  const [start, setStart] = useState(dateParam || searchParams.get('start') || defaults[0])
+  const [end, setEnd] = useState(dateParam || searchParams.get('end') || defaults[1])
 
   const bounds = useGpsBounds()
   const { data, isLoading, error } = useGpsPoints(start, end)

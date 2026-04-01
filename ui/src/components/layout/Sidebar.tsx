@@ -4,6 +4,7 @@ const links = [
   { to: '/explorer', label: 'Explorer' },
   { to: '/flights', label: 'Flights' },
   { to: '/ga', label: 'GA Flights' },
+  { to: '/places', label: 'Places' },
 ]
 
 export default function Sidebar() {

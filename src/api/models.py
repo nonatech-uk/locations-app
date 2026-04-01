@@ -261,3 +261,22 @@ class PlaceLookupResult(BaseModel):
     place: PlaceSummary | None = None
     distance_m: float | None = None
     source: str
+
+
+# --- Daily GPS Summary ---
+
+
+class DayEndpoint(BaseModel):
+    lat: float
+    lon: float
+    ts: datetime
+    place_name: str | None = None
+    place_type: str | None = None
+
+
+class DailySummaryResponse(BaseModel):
+    date: date
+    point_count: int
+    start: DayEndpoint | None = None
+    end: DayEndpoint | None = None
+    track_svg_url: str | None = None
