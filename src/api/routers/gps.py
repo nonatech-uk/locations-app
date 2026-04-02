@@ -32,12 +32,9 @@ def get_points(
     # End date is inclusive — query up to start of next day
     end_exclusive = end + timedelta(days=1)
 
-    # Exclude pet trackers (Tractive) by default
-    source_filter = "AND source_type != 'tractive'"
-
     # Get total count for the range
     cur.execute(
-        f"SELECT count(*) FROM gps_points WHERE ts >= %s AND ts < %s {source_filter}",
+        "SELECT count(*) FROM gps_points_clean WHERE ts >= %s AND ts < %s",
         (start, end_exclusive),
     )
     total_count = cur.fetchone()[0]
@@ -52,13 +49,13 @@ def get_points(
     if simplified:
         nth = total_count // MAX_POINTS + 1
         cur.execute(
-            f"""
+            """
             SELECT lat, lon, ts, speed_mph, altitude_m
             FROM (
                 SELECT lat, lon, ts, speed_mph, altitude_m,
                        row_number() OVER (ORDER BY ts) AS rn
-                FROM gps_points
-                WHERE ts >= %s AND ts < %s {source_filter}
+                FROM gps_points_clean
+                WHERE ts >= %s AND ts < %s
             ) sub
             WHERE rn %% %s = 1
             ORDER BY ts
@@ -67,10 +64,10 @@ def get_points(
         )
     else:
         cur.execute(
-            f"""
+            """
             SELECT lat, lon, ts, speed_mph, altitude_m
-            FROM gps_points
-            WHERE ts >= %s AND ts < %s {source_filter}
+            FROM gps_points_clean
+            WHERE ts >= %s AND ts < %s
             ORDER BY ts
             """,
             (start, end_exclusive),
@@ -93,7 +90,7 @@ def get_points(
 @router.get("/bounds", response_model=GpsBoundsResponse)
 def get_bounds(conn=Depends(get_conn)):
     cur = conn.cursor()
-    cur.execute("SELECT min(ts)::date, max(ts)::date, count(*) FROM gps_points WHERE source_type != 'tractive'")
+    cur.execute("SELECT min(ts)::date, max(ts)::date, count(*) FROM gps_points_clean")
     row = cur.fetchone()
     cur.close()
 
@@ -107,9 +104,6 @@ def get_bounds(conn=Depends(get_conn)):
 # ---------------------------------------------------------------------------
 # Track SVG thumbnail
 # ---------------------------------------------------------------------------
-
-SOURCE_FILTER = "AND source_type != 'tractive'"
-
 
 def _build_track_svg(
     rows: list[tuple[float, float]],
@@ -203,7 +197,7 @@ def get_track_svg(
     end_exclusive = date + timedelta(days=1)
 
     cur.execute(
-        f"SELECT count(*) FROM gps_points WHERE ts >= %s AND ts < %s {SOURCE_FILTER}",
+        "SELECT count(*) FROM gps_points_clean WHERE ts >= %s AND ts < %s",
         (date, end_exclusive),
     )
     total = cur.fetchone()[0]
@@ -216,17 +210,17 @@ def get_track_svg(
     if total > MAX_SVG_POINTS:
         nth = total // MAX_SVG_POINTS + 1
         cur.execute(
-            f"""SELECT lat, lon FROM (
+            """SELECT lat, lon FROM (
                     SELECT lat, lon, row_number() OVER (ORDER BY ts) AS rn
-                    FROM gps_points
-                    WHERE ts >= %s AND ts < %s {SOURCE_FILTER}
+                    FROM gps_points_clean
+                    WHERE ts >= %s AND ts < %s
                 ) sub WHERE rn %% %s = 1
                 ORDER BY rn""",
             (date, end_exclusive, nth),
         )
     else:
         cur.execute(
-            f"SELECT lat, lon FROM gps_points WHERE ts >= %s AND ts < %s {SOURCE_FILTER} ORDER BY ts",
+            "SELECT lat, lon FROM gps_points_clean WHERE ts >= %s AND ts < %s ORDER BY ts",
             (date, end_exclusive),
         )
 
@@ -348,7 +342,7 @@ def get_daily_summary(
 
     # Point count
     cur.execute(
-        f"SELECT count(*) FROM gps_points WHERE ts >= %s AND ts < %s {SOURCE_FILTER}",
+        "SELECT count(*) FROM gps_points_clean WHERE ts >= %s AND ts < %s",
         (date, end_exclusive),
     )
     point_count = cur.fetchone()[0]
@@ -359,14 +353,14 @@ def get_daily_summary(
 
     # First point
     cur.execute(
-        f"SELECT lat, lon, ts FROM gps_points WHERE ts >= %s AND ts < %s {SOURCE_FILTER} ORDER BY ts ASC LIMIT 1",
+        "SELECT lat, lon, ts FROM gps_points_clean WHERE ts >= %s AND ts < %s ORDER BY ts ASC LIMIT 1",
         (date, end_exclusive),
     )
     first = cur.fetchone()
 
     # Last point
     cur.execute(
-        f"SELECT lat, lon, ts FROM gps_points WHERE ts >= %s AND ts < %s {SOURCE_FILTER} ORDER BY ts DESC LIMIT 1",
+        "SELECT lat, lon, ts FROM gps_points_clean WHERE ts >= %s AND ts < %s ORDER BY ts DESC LIMIT 1",
         (date, end_exclusive),
     )
     last = cur.fetchone()

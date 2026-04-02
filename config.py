@@ -11,9 +11,9 @@ DB_USER = os.environ["DB_USER"]
 DB_PASSWORD = os.environ["DB_PASSWORD"]
 
 # FollowMee API
-FOLLOWMEE_USERNAME = os.environ["FOLLOWMEE_USERNAME"]
-FOLLOWMEE_API_KEY = os.environ["FOLLOWMEE_API_KEY"]
-FOLLOWMEE_DEVICE_ID = os.environ["FOLLOWMEE_DEVICE_ID"]
+FOLLOWMEE_USERNAME = os.environ.get("FOLLOWMEE_USERNAME", "")
+FOLLOWMEE_API_KEY = os.environ.get("FOLLOWMEE_API_KEY", "")
+FOLLOWMEE_DEVICE_ID = os.environ.get("FOLLOWMEE_DEVICE_ID", "")
 
 # Import settings
 DEVICE_ID = os.environ.get("DEVICE_ID", "followmee")
