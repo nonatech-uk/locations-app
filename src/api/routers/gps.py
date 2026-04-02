@@ -241,6 +241,63 @@ def get_track_svg(
     )
 
 
+def _decode_polyline(encoded: str) -> list[tuple[float, float]]:
+    """Decode a Google encoded polyline into list of (lat, lon) tuples."""
+    points = []
+    index = 0
+    lat = 0
+    lon = 0
+    while index < len(encoded):
+        for attr in ("lat", "lon"):
+            shift = 0
+            result = 0
+            while True:
+                b = ord(encoded[index]) - 63
+                index += 1
+                result |= (b & 0x1F) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            delta = ~(result >> 1) if result & 1 else result >> 1
+            if attr == "lat":
+                lat += delta
+            else:
+                lon += delta
+        points.append((lat / 1e5, lon / 1e5))
+    return points
+
+
+@router.get("/activity-track-svg")
+def get_activity_track_svg(
+    strava_id: int = Query(..., description="Strava activity ID"),
+    width: int = Query(200, ge=50, le=800),
+    height: int = Query(150, ge=50, le=600),
+    conn=Depends(get_conn),
+):
+    """Render an SVG track for a Strava activity from its stored polyline."""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT map_polyline FROM strava_activities WHERE id = %s",
+        (strava_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+
+    if not row or not row[0]:
+        return Response(status_code=204)
+
+    points = _decode_polyline(row[0])
+    if not points:
+        return Response(status_code=204)
+
+    svg = _build_track_svg(points, width, height, color="#fc4c02")  # Strava orange
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=604800"},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Daily summary
 # ---------------------------------------------------------------------------

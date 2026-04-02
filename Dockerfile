@@ -28,8 +28,9 @@ COPY skiing/ skiing/
 COPY ga/ ga/
 COPY immich/ immich/
 COPY tractive/ tractive/
+COPY strava/ strava/
 COPY tractive-sync.sh .
-RUN chmod +x scripts/entrypoint.sh sync.sh tractive-sync.sh
+RUN chmod +x scripts/entrypoint.sh sync.sh tractive-sync.sh strava/sync.sh
 
 ENV PYTHONPATH=/app
 

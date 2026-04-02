@@ -30,3 +30,12 @@ IMMICH_DB_PORT = int(os.environ.get("IMMICH_DB_PORT", 5433))
 IMMICH_DB_NAME = os.environ.get("IMMICH_DB_NAME", "immich")
 IMMICH_DB_USER = os.environ.get("IMMICH_DB_USER", "immich")
 IMMICH_DB_PASSWORD = os.environ.get("IMMICH_DB_PASSWORD", "")
+
+# Strava API
+STRAVA_CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID", "")
+STRAVA_CLIENT_SECRET = os.environ.get("STRAVA_CLIENT_SECRET", "")
+STRAVA_REFRESH_TOKEN = os.environ.get("STRAVA_REFRESH_TOKEN", "")
+
+# Journal API (for activity ingest)
+JOURNAL_API_URL = os.environ.get("JOURNAL_API_URL", "http://localhost:8000")
+JOURNAL_PIPELINE_SECRET = os.environ.get("JOURNAL_PIPELINE_SECRET", "")
