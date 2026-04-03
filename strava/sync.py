@@ -1,10 +1,8 @@
 """Strava sync — fetches activities, inserts GPS points, posts to journal ingest."""
 
 import argparse
-import json
 import os
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,7 +17,7 @@ import config
 from strava.client import StravaClient
 from strava.models import strava_to_ingest_payload
 
-# State file for incremental sync
+# State file for incremental sync (fallback; DB is primary)
 STATE_FILE = Path(__file__).resolve().parent.parent / ".strava_last_sync"
 
 # Strava config (from env)
@@ -99,8 +97,25 @@ def ensure_strava_table(conn):
     cur.close()
 
 
+def is_virtual_activity(activity: dict) -> bool:
+    """Return True for indoor/virtual activities (Zwift, Rouvy, etc.)."""
+    sport_type = activity.get("sport_type") or activity.get("type") or ""
+    if sport_type.startswith("Virtual"):
+        return True
+    if activity.get("trainer"):
+        return True
+    return False
+
+
 def insert_gps_points(conn, activity: dict):
-    """Decode polyline and insert GPS breadcrumbs into gps_points."""
+    """Decode polyline and insert GPS breadcrumbs into gps_points.
+
+    Skips virtual/indoor activities (Zwift, Rouvy) — their polylines
+    are synthetic routes, not real GPS tracks.
+    """
+    if is_virtual_activity(activity):
+        return 0
+
     polyline = (activity.get("map") or {}).get("summary_polyline")
     if not polyline:
         return 0
@@ -201,18 +216,23 @@ def post_to_journal(activities: list[dict]):
         print(f"  Journal ingest: {result['created']} created, {result['updated']} updated")
 
 
-def read_last_sync() -> int | None:
-    """Read last sync timestamp from state file."""
+def read_last_sync(conn) -> int | None:
+    """Read last sync timestamp from DB (synced_at of most recent strava_activity).
+
+    Falls back to state file if DB has no records.
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT EXTRACT(EPOCH FROM MAX(synced_at))::bigint FROM strava_activities")
+    row = cur.fetchone()
+    cur.close()
+    if row and row[0]:
+        return row[0]
+    # Fallback to state file
     if STATE_FILE.exists():
         text = STATE_FILE.read_text().strip()
         if text:
             return int(text)
     return None
-
-
-def write_last_sync(ts: int):
-    """Write last sync timestamp to state file."""
-    STATE_FILE.write_text(str(ts))
 
 
 def sync(seed: bool = False):
@@ -229,8 +249,7 @@ def sync(seed: bool = False):
     ensure_strava_table(conn)
 
     try:
-        after = None if seed else read_last_sync()
-        sync_start = int(time.time())
+        after = None if seed else read_last_sync(conn)
 
         if after:
             print(f"Incremental sync: fetching activities after {datetime.fromtimestamp(after, tz=timezone.utc).isoformat()}")
@@ -242,19 +261,20 @@ def sync(seed: bool = False):
 
         if not activities:
             print("Nothing to sync")
-            write_last_sync(sync_start)
             return
 
         total_gps = 0
+        skipped_virtual = 0
         for act in activities:
+            if is_virtual_activity(act):
+                skipped_virtual += 1
             gps_count = insert_gps_points(conn, act)
             upsert_strava_activity(conn, act)
             total_gps += gps_count
         conn.commit()
-        print(f"GPS: inserted {total_gps} points into gps_points")
+        print(f"GPS: inserted {total_gps} points into gps_points ({skipped_virtual} virtual activities skipped)")
 
         post_to_journal(activities)
-        write_last_sync(sync_start)
         print("Sync complete")
 
     finally:
