@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { LatLngTuple } from 'leaflet'
 import LocationMap from '../components/map/LocationMap'
+import PlaceEditPanel from '../components/places/PlaceEditPanel'
 import { useGpsBounds, useGpsPoints } from '../hooks/useGpsPoints'
+import { usePlacesInBounds } from '../hooks/usePlaces'
+import type { MapBounds } from '../api/types'
 
 function formatDate(d: Date): string {
   return d.toISOString().split('T')[0]
@@ -15,18 +18,39 @@ function defaultRange(): [string, string] {
   return [formatDate(start), formatDate(end)]
 }
 
+type PanelState =
+  | { mode: 'create'; lat: number; lon: number }
+  | { mode: 'edit'; placeId: number }
+  | null
+
 export default function Explorer() {
   const [searchParams] = useSearchParams()
   const [defaults] = useState(defaultRange)
   const dateParam = searchParams.get('date')
   const [start, setStart] = useState(dateParam || searchParams.get('start') || defaults[0])
   const [end, setEnd] = useState(dateParam || searchParams.get('end') || defaults[1])
+  const [showPlaces, setShowPlaces] = useState(true)
+  const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
+  const [panel, setPanel] = useState<PanelState>(null)
 
   const bounds = useGpsBounds()
   const { data, isLoading, error } = useGpsPoints(start, end)
+  const { data: places } = usePlacesInBounds(showPlaces ? mapBounds : null)
 
   const positions: LatLngTuple[] =
     data?.points.map((p) => [p.lat, p.lon] as LatLngTuple) ?? []
+
+  const handleBoundsChange = useCallback((b: MapBounds) => {
+    setMapBounds(b)
+  }, [])
+
+  const handleMapRightClick = useCallback((latlng: { lat: number; lon: number }) => {
+    setPanel({ mode: 'create', lat: latlng.lat, lon: latlng.lon })
+  }, [])
+
+  const handlePlaceClick = useCallback((placeId: number) => {
+    setPanel({ mode: 'edit', placeId })
+  }, [])
 
   return (
     <div className="flex flex-col h-full">
@@ -55,6 +79,17 @@ export default function Explorer() {
           />
         </label>
 
+        <button
+          onClick={() => setShowPlaces((v) => !v)}
+          className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+            showPlaces
+              ? 'bg-accent text-white border-accent'
+              : 'bg-bg-card text-text-secondary border-border hover:text-text-primary'
+          }`}
+        >
+          Places
+        </button>
+
         {data && (
           <span className="text-xs text-text-secondary ml-auto">
             {data.returned_count.toLocaleString()} points
@@ -79,8 +114,29 @@ export default function Explorer() {
             {(error as Error).message}
           </div>
         )}
-        <LocationMap positions={positions} />
+        <LocationMap
+          positions={positions}
+          places={showPlaces ? places : undefined}
+          onBoundsChange={handleBoundsChange}
+          onMapRightClick={handleMapRightClick}
+          onPlaceClick={handlePlaceClick}
+        />
       </div>
+
+      {/* Place edit/create panel */}
+      {panel?.mode === 'create' && (
+        <PlaceEditPanel
+          placeId={null}
+          onCreate={{ name: '', lat: panel.lat, lon: panel.lon }}
+          onClose={() => setPanel(null)}
+        />
+      )}
+      {panel?.mode === 'edit' && (
+        <PlaceEditPanel
+          placeId={panel.placeId}
+          onClose={() => setPanel(null)}
+        />
+      )}
     </div>
   )
 }

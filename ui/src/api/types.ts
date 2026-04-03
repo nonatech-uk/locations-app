@@ -65,6 +65,13 @@ export interface PlaceLookupResult {
   source: string
 }
 
+export interface MapBounds {
+  south: number
+  west: number
+  north: number
+  east: number
+}
+
 export interface PlaceCreate {
   name: string
   place_type_id: number

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePlace, usePlaceTypes, useCreatePlace, useUpdatePlace, useDeletePlace } from '../../hooks/usePlaces'
 import type { PlaceCreate, PlaceUpdate } from '../../api/types'
+import PlaceTypesPanel from './PlaceTypesPanel'
 
 interface Props {
   placeId: number | null
@@ -31,6 +32,7 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showTypes, setShowTypes] = useState(false)
 
   useEffect(() => {
     if (place) {
@@ -148,18 +150,27 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
           </div>
           <div className="col-span-2">
             <div className={labelCls}>Place Type</div>
-            <select
-              className={inputCls}
-              value={form.place_type_id}
-              onChange={(e) => set('place_type_id', Number(e.target.value))}
-            >
-              {form.place_type_id === 0 && <option value={0}>— Select —</option>}
-              {placeTypes?.items.map((pt) => (
-                <option key={pt.id} value={pt.id}>
-                  {pt.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                className={inputCls}
+                value={form.place_type_id}
+                onChange={(e) => set('place_type_id', Number(e.target.value))}
+              >
+                {form.place_type_id === 0 && <option value={0}>— Select —</option>}
+                {placeTypes?.items.map((pt) => (
+                  <option key={pt.id} value={pt.id}>
+                    {pt.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowTypes(true)}
+                className="px-2 py-1 rounded border border-border text-xs text-text-secondary hover:text-text-primary transition-colors shrink-0"
+              >
+                Edit
+              </button>
+            </div>
           </div>
         </div>
 
@@ -267,6 +278,7 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
           )}
         </div>
       </div>
+      {showTypes && <PlaceTypesPanel onClose={() => setShowTypes(false)} />}
     </div>
   )
 }

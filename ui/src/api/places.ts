@@ -1,5 +1,6 @@
 import { apiFetch, apiMutate } from './client'
 import type {
+  MapBounds,
   PlaceCreate,
   PlaceListResponse,
   PlaceLookupResult,
@@ -8,6 +9,15 @@ import type {
   PlaceTypeListResponse,
   PlaceUpdate,
 } from './types'
+
+export function fetchPlacesInBounds(bounds: MapBounds): Promise<PlaceSummary[]> {
+  return apiFetch<PlaceSummary[]>('/places/in-bounds', {
+    south: String(bounds.south),
+    west: String(bounds.west),
+    north: String(bounds.north),
+    east: String(bounds.east),
+  })
+}
 
 export function fetchPlaces(
   page: number,

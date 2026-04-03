@@ -55,6 +55,31 @@ def create_place(body: PlaceCreate, conn=Depends(get_conn)):
     return _row_to_summary(row)
 
 
+# --- In bounds ---
+
+
+@router.get("/in-bounds", response_model=list[PlaceSummary])
+def places_in_bounds(
+    south: float = Query(...),
+    west: float = Query(...),
+    north: float = Query(...),
+    east: float = Query(...),
+    conn=Depends(get_conn),
+):
+    """Return all places whose lat/lon falls within the given bounding box."""
+    cur = conn.cursor()
+    cur.execute(
+        f"""SELECT {PLACE_COLS}
+            FROM place p JOIN place_type pt ON pt.id = p.place_type_id
+            WHERE p.lat BETWEEN %s AND %s AND p.lon BETWEEN %s AND %s
+            ORDER BY p.name""",
+        (south, north, west, east),
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return [_row_to_summary(r) for r in rows]
+
+
 # --- List ---
 
 

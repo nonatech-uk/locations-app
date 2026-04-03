@@ -6,12 +6,22 @@ import {
   deletePlaceType,
   fetchPlace,
   fetchPlaces,
+  fetchPlacesInBounds,
   fetchPlaceTypes,
   lookupPlace,
   updatePlace,
   updatePlaceType,
 } from '../api/places'
-import type { PlaceCreate, PlaceUpdate } from '../api/types'
+import type { MapBounds, PlaceCreate, PlaceUpdate } from '../api/types'
+
+export function usePlacesInBounds(bounds: MapBounds | null) {
+  return useQuery({
+    queryKey: ['places-in-bounds', bounds?.south, bounds?.west, bounds?.north, bounds?.east],
+    queryFn: () => fetchPlacesInBounds(bounds!),
+    enabled: bounds !== null,
+    staleTime: 60_000,
+  })
+}
 
 export function usePlaces(page: number, perPage: number) {
   return useQuery({
