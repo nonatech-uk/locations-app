@@ -1,6 +1,7 @@
 import { apiFetch, apiMutate } from './client'
 import type {
   MapBounds,
+  NearbyWifi,
   PlaceCreate,
   PlaceListResponse,
   PlaceLookupResult,
@@ -43,6 +44,18 @@ export function lookupPlace(
   }
   if (dt) params.dt = dt
   return apiFetch<PlaceLookupResult>('/places/lookup', params)
+}
+
+export function fetchNearbyWifi(
+  lat: number,
+  lon: number,
+  radiusM: number,
+): Promise<NearbyWifi[]> {
+  return apiFetch<NearbyWifi[]>('/places/nearby-wifi', {
+    lat: String(lat),
+    lon: String(lon),
+    radius_m: String(radiusM),
+  })
 }
 
 export function fetchPlace(id: number): Promise<PlaceSummary> {

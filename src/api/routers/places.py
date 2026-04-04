@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.deps import get_conn
 from src.api.models import (
+    NearbyWifi,
     PlaceCreate,
     PlaceListResponse,
     PlaceLookupResult,
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/places")
 
 PLACE_COLS = """
     p.id, p.name, p.place_type_id, pt.name AS place_type_name,
-    p.lat, p.lon, p.distance_m, p.date_from, p.date_to, p.notes
+    p.lat, p.lon, p.distance_m, p.date_from, p.date_to, p.notes, p.wifi_ssids
 """
 
 
@@ -26,7 +27,7 @@ def _row_to_summary(r) -> PlaceSummary:
     return PlaceSummary(
         id=r[0], name=r[1], place_type_id=r[2], place_type_name=r[3],
         lat=r[4], lon=r[5], distance_m=r[6],
-        date_from=r[7], date_to=r[8], notes=r[9],
+        date_from=r[7], date_to=r[8], notes=r[9], wifi_ssids=r[10],
     )
 
 
@@ -37,9 +38,9 @@ def _row_to_summary(r) -> PlaceSummary:
 def create_place(body: PlaceCreate, conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute(
-        """INSERT INTO place (name, place_type_id, lat, lon, distance_m, date_from, date_to, notes)
+        """INSERT INTO place (name, place_type_id, lat, lon, distance_m, date_from, date_to, notes, wifi_ssids)
            VALUES (%(name)s, %(place_type_id)s, %(lat)s, %(lon)s, %(distance_m)s,
-                   %(date_from)s, %(date_to)s, %(notes)s)
+                   %(date_from)s, %(date_to)s, %(notes)s, %(wifi_ssids)s)
            RETURNING id""",
         body.model_dump(),
     )
@@ -123,6 +124,32 @@ def list_places(
     )
 
 
+# --- Nearby Wi-Fi ---
+
+
+@router.get("/nearby-wifi", response_model=list[NearbyWifi])
+def nearby_wifi(
+    lat: float = Query(...),
+    lon: float = Query(...),
+    radius_m: int = Query(200),
+    conn=Depends(get_conn),
+):
+    """Return distinct Wi-Fi SSIDs observed near the given coordinates."""
+    cur = conn.cursor()
+    cur.execute(
+        """SELECT wifi_ssid, count(*) AS cnt
+           FROM gps_points_clean
+           WHERE wifi_ssid IS NOT NULL AND wifi_ssid != ''
+             AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)
+           GROUP BY wifi_ssid
+           ORDER BY cnt DESC""",
+        (lon, lat, radius_m),
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return [NearbyWifi(ssid=r[0], count=r[1]) for r in rows]
+
+
 # --- Lookup ---
 
 
@@ -131,9 +158,14 @@ def lookup_place(
     lat: float = Query(...),
     lon: float = Query(...),
     dt: date | None = Query(None),
+    wifi_ssid: str | None = Query(None),
     conn=Depends(get_conn),
 ):
-    """Find the nearest place whose radius covers the given coordinates."""
+    """Find the nearest place whose radius covers the given coordinates.
+
+    If wifi_ssid is provided and matches a place's wifi_ssids array,
+    that place is preferred even if GPS alone wouldn't match.
+    """
     cur = conn.cursor()
 
     date_filter = ""
@@ -142,6 +174,30 @@ def lookup_place(
         date_filter = "AND (p.date_from IS NULL OR p.date_from <= %(dt)s) AND (p.date_to IS NULL OR p.date_to >= %(dt)s)"
         params["dt"] = dt
 
+    # If wifi_ssid provided, try Wi-Fi match first
+    if wifi_ssid:
+        params["wifi_ssid"] = wifi_ssid
+        cur.execute(
+            f"""SELECT {PLACE_COLS},
+                       ST_Distance(p.geom, ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography) AS dist_m
+                FROM place p
+                JOIN place_type pt ON pt.id = p.place_type_id
+                WHERE %(wifi_ssid)s = ANY(p.wifi_ssids)
+                {date_filter}
+                ORDER BY dist_m ASC
+                LIMIT 1""",
+            params,
+        )
+        row = cur.fetchone()
+        if row:
+            cur.close()
+            return PlaceLookupResult(
+                place=_row_to_summary(row),
+                distance_m=round(row[11], 1),
+                source="wifi",
+            )
+
+    # Fall back to GPS radius match
     cur.execute(
         f"""SELECT {PLACE_COLS},
                    ST_Distance(p.geom, ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography) AS dist_m
@@ -159,7 +215,7 @@ def lookup_place(
     if row:
         return PlaceLookupResult(
             place=_row_to_summary(row),
-            distance_m=round(row[10], 1),
+            distance_m=round(row[11], 1),
             source="places",
         )
     return PlaceLookupResult(source="nominatim")
@@ -184,7 +240,7 @@ def get_place(place_id: int, conn=Depends(get_conn)):
 
 # --- Update ---
 
-UPDATABLE_FIELDS = {"name", "place_type_id", "lat", "lon", "distance_m", "date_from", "date_to", "notes"}
+UPDATABLE_FIELDS = {"name", "place_type_id", "lat", "lon", "distance_m", "date_from", "date_to", "notes", "wifi_ssids"}
 
 
 @router.patch("/{place_id}", response_model=PlaceSummary)

@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS place (
     distance_m INTEGER NOT NULL DEFAULT 200,
     date_from DATE,
     date_to DATE,
-    notes TEXT
+    notes TEXT,
+    wifi_ssids TEXT[]
 );
 
 CREATE INDEX IF NOT EXISTS idx_place_geom ON place USING GIST (geom);
@@ -33,3 +34,6 @@ GRANT USAGE, SELECT ON SEQUENCE place_id_seq, place_type_id_seq TO mylocation;
 -- Read-only access for MCP
 GRANT SELECT ON place_type TO mcp_readonly;
 GRANT SELECT ON place TO mcp_readonly;
+
+-- Migration: add wifi_ssids to existing tables
+ALTER TABLE place ADD COLUMN IF NOT EXISTS wifi_ssids TEXT[];

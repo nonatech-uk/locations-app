@@ -56,10 +56,11 @@ class PlaceCreate(BaseModel):
     place_type_id: int
     lat: float
     lon: float
-    distance_m: int = 200
+    distance_m: int = 50
     date_from: date | None = None
     date_to: date | None = None
     notes: str | None = None
+    wifi_ssids: list[str] | None = None
 
 
 class PlaceUpdate(BaseModel):
@@ -71,6 +72,7 @@ class PlaceUpdate(BaseModel):
     date_from: date | None = None
     date_to: date | None = None
     notes: str | None = None
+    wifi_ssids: list[str] | None = None
 
 
 class PlaceSummary(BaseModel):
@@ -84,6 +86,12 @@ class PlaceSummary(BaseModel):
     date_from: date | None = None
     date_to: date | None = None
     notes: str | None = None
+    wifi_ssids: list[str] | None = None
+
+
+class NearbyWifi(BaseModel):
+    ssid: str
+    count: int
 
 
 class PlaceListResponse(BaseModel):

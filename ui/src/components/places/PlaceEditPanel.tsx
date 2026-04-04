@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { usePlace, usePlaceTypes, useCreatePlace, useUpdatePlace, useDeletePlace } from '../../hooks/usePlaces'
+import { usePlace, usePlaceTypes, useCreatePlace, useUpdatePlace, useDeletePlace, useNearbyWifi } from '../../hooks/usePlaces'
 import type { PlaceCreate, PlaceUpdate } from '../../api/types'
 import PlaceTypesPanel from './PlaceTypesPanel'
 
@@ -28,7 +28,9 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
     date_from: null,
     date_to: null,
     notes: null,
+    wifi_ssids: [],
   })
+  const { data: nearbyWifi } = useNearbyWifi(form.lat, form.lon, form.distance_m ?? 200)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -45,6 +47,7 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
         date_from: place.date_from,
         date_to: place.date_to,
         notes: place.notes,
+        wifi_ssids: place.wifi_ssids ?? [],
       })
     }
   }, [place])
@@ -75,6 +78,7 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
         date_from: form.date_from,
         date_to: form.date_to,
         notes: form.notes,
+        wifi_ssids: form.wifi_ssids,
       }
       updateMutation.mutate(
         { id: placeId, data: update },
@@ -223,6 +227,63 @@ export default function PlaceEditPanel({ placeId, onCreate, onClose }: Props) {
             value={form.notes ?? ''}
             onChange={(e) => set('notes', e.target.value || null)}
           />
+        </div>
+
+        {/* Wi-Fi Networks */}
+        <div className="mb-4">
+          <div className={labelCls}>Wi-Fi Networks</div>
+          {(form.wifi_ssids ?? []).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(form.wifi_ssids ?? []).map((ssid) => (
+                <span
+                  key={ssid}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/15 text-accent text-xs"
+                >
+                  {ssid}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        wifi_ssids: (prev.wifi_ssids ?? []).filter((s) => s !== ssid),
+                      }))
+                    }
+                    className="hover:text-red-500 ml-0.5"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {nearbyWifi && nearbyWifi.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {nearbyWifi
+                .filter((w) => !(form.wifi_ssids ?? []).includes(w.ssid))
+                .map((w) => (
+                  <button
+                    key={w.ssid}
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        wifi_ssids: [...(prev.wifi_ssids ?? []), w.ssid],
+                      }))
+                    }
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border text-xs text-text-secondary hover:border-accent hover:text-accent transition-colors"
+                  >
+                    {w.ssid}
+                    <span className="text-text-secondary/50">({w.count})</span>
+                  </button>
+                ))}
+            </div>
+          ) : (
+            <div className="text-xs text-text-secondary/50">
+              {form.lat === 0 && form.lon === 0
+                ? 'Set coordinates to see nearby networks'
+                : 'No Wi-Fi networks observed near this location'}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 items-center">

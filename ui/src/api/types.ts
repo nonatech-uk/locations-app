@@ -49,6 +49,7 @@ export interface PlaceSummary {
   date_from: string | null
   date_to: string | null
   notes: string | null
+  wifi_ssids: string[] | null
 }
 
 export interface PlaceListResponse {
@@ -81,6 +82,7 @@ export interface PlaceCreate {
   date_from?: string | null
   date_to?: string | null
   notes?: string | null
+  wifi_ssids?: string[] | null
 }
 
 export interface PlaceUpdate {
@@ -92,4 +94,10 @@ export interface PlaceUpdate {
   date_from?: string | null
   date_to?: string | null
   notes?: string | null
+  wifi_ssids?: string[] | null
+}
+
+export interface NearbyWifi {
+  ssid: string
+  count: number
 }

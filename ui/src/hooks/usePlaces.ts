@@ -4,6 +4,7 @@ import {
   createPlaceType,
   deletePlace,
   deletePlaceType,
+  fetchNearbyWifi,
   fetchPlace,
   fetchPlaces,
   fetchPlacesInBounds,
@@ -45,6 +46,15 @@ export function usePlaceLookup(lat: number | null, lon: number | null, dt?: stri
     queryKey: ['place-lookup', lat, lon, dt],
     queryFn: () => lookupPlace(lat!, lon!, dt),
     enabled: lat !== null && lon !== null,
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useNearbyWifi(lat: number, lon: number, radiusM: number) {
+  return useQuery({
+    queryKey: ['nearby-wifi', lat, lon, radiusM],
+    queryFn: () => fetchNearbyWifi(lat, lon, radiusM),
+    enabled: lat !== 0 && lon !== 0,
     staleTime: 5 * 60_000,
   })
 }
