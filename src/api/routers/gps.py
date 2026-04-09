@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
-from src.api.deps import get_conn
+from src.api.deps import CurrentUser, get_conn, get_current_user
 from src.api.models import (
     DailySummaryResponse,
     DayEndpoint,
@@ -25,6 +25,7 @@ MAX_SVG_POINTS = 500
 def get_points(
     start: date = Query(..., description="Start date (inclusive)"),
     end: date = Query(..., description="End date (inclusive)"),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     cur = conn.cursor()
@@ -88,7 +89,7 @@ def get_points(
 
 
 @router.get("/bounds", response_model=GpsBoundsResponse)
-def get_bounds(conn=Depends(get_conn)):
+def get_bounds(_user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute("SELECT min(ts)::date, max(ts)::date, count(*) FROM gps_points_clean")
     row = cur.fetchone()
@@ -191,6 +192,7 @@ def get_track_svg(
     date: date = Query(..., description="Date for track"),
     width: int = Query(200, ge=50, le=800),
     height: int = Query(150, ge=50, le=600),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     cur = conn.cursor()
@@ -266,6 +268,7 @@ def get_activity_track_svg(
     strava_id: int = Query(..., description="Strava activity ID"),
     width: int = Query(200, ge=50, le=800),
     height: int = Query(150, ge=50, le=600),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     """Render an SVG track for a Strava activity from its stored polyline."""
@@ -335,6 +338,7 @@ def _lookup_place(cur, lat: float, lon: float, dt: date) -> tuple[str | None, st
 @router.get("/daily-summary", response_model=DailySummaryResponse)
 def get_daily_summary(
     date: date = Query(..., description="Date for summary"),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     cur = conn.cursor()

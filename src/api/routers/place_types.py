@@ -4,14 +4,14 @@ import psycopg2
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from src.api.deps import get_conn
+from src.api.deps import CurrentUser, get_conn, get_current_user
 from src.api.models import PlaceTypeCreate, PlaceTypeListResponse, PlaceTypeResponse
 
 router = APIRouter(prefix="/place-types")
 
 
 @router.post("/", response_model=PlaceTypeResponse, status_code=201)
-def create_place_type(body: PlaceTypeCreate, conn=Depends(get_conn)):
+def create_place_type(body: PlaceTypeCreate, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     try:
         cur.execute(
@@ -28,7 +28,7 @@ def create_place_type(body: PlaceTypeCreate, conn=Depends(get_conn)):
 
 
 @router.get("/", response_model=PlaceTypeListResponse)
-def list_place_types(conn=Depends(get_conn)):
+def list_place_types(_user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute("SELECT id, name FROM place_type ORDER BY name")
     rows = cur.fetchall()
@@ -40,7 +40,7 @@ def list_place_types(conn=Depends(get_conn)):
 
 
 @router.get("/{type_id}", response_model=PlaceTypeResponse)
-def get_place_type(type_id: int, conn=Depends(get_conn)):
+def get_place_type(type_id: int, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute("SELECT id, name FROM place_type WHERE id = %s", (type_id,))
     row = cur.fetchone()
@@ -51,7 +51,7 @@ def get_place_type(type_id: int, conn=Depends(get_conn)):
 
 
 @router.patch("/{type_id}", response_model=PlaceTypeResponse)
-def update_place_type(type_id: int, body: PlaceTypeCreate, conn=Depends(get_conn)):
+def update_place_type(type_id: int, body: PlaceTypeCreate, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     try:
         cur.execute(
@@ -70,7 +70,7 @@ def update_place_type(type_id: int, body: PlaceTypeCreate, conn=Depends(get_conn
 
 
 @router.delete("/{type_id}", status_code=204)
-def delete_place_type(type_id: int, conn=Depends(get_conn)):
+def delete_place_type(type_id: int, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     try:
         cur.execute("DELETE FROM place_type WHERE id = %s RETURNING id", (type_id,))

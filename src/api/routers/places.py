@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.api.deps import get_conn
+from src.api.deps import CurrentUser, get_conn, get_current_user
 from src.api.models import (
     NearbyWifi,
     PlaceCreate,
@@ -35,7 +35,7 @@ def _row_to_summary(r) -> PlaceSummary:
 
 
 @router.post("/", response_model=PlaceSummary, status_code=201)
-def create_place(body: PlaceCreate, conn=Depends(get_conn)):
+def create_place(body: PlaceCreate, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute(
         """INSERT INTO place (name, place_type_id, lat, lon, distance_m, date_from, date_to, notes, wifi_ssids)
@@ -65,6 +65,7 @@ def places_in_bounds(
     west: float = Query(...),
     north: float = Query(...),
     east: float = Query(...),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     """Return all places whose lat/lon falls within the given bounding box."""
@@ -89,6 +90,7 @@ def list_places(
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=1, le=100),
     place_type_id: int | None = Query(None),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     cur = conn.cursor()
@@ -132,6 +134,7 @@ def nearby_wifi(
     lat: float = Query(...),
     lon: float = Query(...),
     radius_m: int = Query(200),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     """Return distinct Wi-Fi SSIDs observed near the given coordinates."""
@@ -159,6 +162,7 @@ def lookup_place(
     lon: float = Query(...),
     dt: date | None = Query(None),
     wifi_ssid: str | None = Query(None),
+    _user: CurrentUser = Depends(get_current_user),
     conn=Depends(get_conn),
 ):
     """Find the nearest place whose radius covers the given coordinates.
@@ -225,7 +229,7 @@ def lookup_place(
 
 
 @router.get("/{place_id}", response_model=PlaceSummary)
-def get_place(place_id: int, conn=Depends(get_conn)):
+def get_place(place_id: int, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute(
         f"SELECT {PLACE_COLS} FROM place p JOIN place_type pt ON pt.id = p.place_type_id WHERE p.id = %s",
@@ -244,7 +248,7 @@ UPDATABLE_FIELDS = {"name", "place_type_id", "lat", "lon", "distance_m", "date_f
 
 
 @router.patch("/{place_id}", response_model=PlaceSummary)
-def update_place(place_id: int, update: PlaceUpdate, conn=Depends(get_conn)):
+def update_place(place_id: int, update: PlaceUpdate, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     changes = {k: v for k, v in update.model_dump(exclude_unset=True).items() if k in UPDATABLE_FIELDS}
     if not changes:
         raise HTTPException(400, "No valid fields to update")
@@ -268,7 +272,7 @@ def update_place(place_id: int, update: PlaceUpdate, conn=Depends(get_conn)):
 
 
 @router.delete("/{place_id}", status_code=204)
-def delete_place(place_id: int, conn=Depends(get_conn)):
+def delete_place(place_id: int, _user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
     cur.execute("DELETE FROM place WHERE id = %s RETURNING id", (place_id,))
     row = cur.fetchone()

@@ -2,14 +2,14 @@
 
 from fastapi import APIRouter, Depends
 
-from src.api.deps import get_conn
+from src.api.deps import CurrentUser, get_conn, get_current_user
 from src.api.models import OverviewStats
 
 router = APIRouter(prefix="/stats")
 
 
 @router.get("/overview", response_model=OverviewStats)
-def overview(conn=Depends(get_conn)):
+def overview(_user: CurrentUser = Depends(get_current_user), conn=Depends(get_conn)):
     cur = conn.cursor()
 
     cur.execute("SELECT count(*) FROM gps_points")
