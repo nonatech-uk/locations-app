@@ -1,34 +1,9 @@
 """Connection pool dependency."""
 
-from collections.abc import Generator
-
-from psycopg2.pool import ThreadedConnectionPool
+from mees_shared.db import get_conn, init_pool as _init_pool, close_pool  # noqa: F401
 
 from src.api.settings import settings
 
-pool: ThreadedConnectionPool | None = None
-
 
 def init_pool() -> None:
-    global pool
-    pool = ThreadedConnectionPool(
-        settings.db_pool_min,
-        settings.db_pool_max,
-        settings.dsn,
-    )
-
-
-def close_pool() -> None:
-    global pool
-    if pool:
-        pool.closeall()
-        pool = None
-
-
-def get_conn() -> Generator:
-    assert pool is not None, "Connection pool not initialised"
-    conn = pool.getconn()
-    try:
-        yield conn
-    finally:
-        pool.putconn(conn)
+    _init_pool(settings.dsn, settings.db_pool_min, settings.db_pool_max)

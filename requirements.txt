@@ -1,12 +1,9 @@
-psycopg2-binary
+mees-shared @ file:///tmp/mees-shared-py
 python-dotenv
 requests
 openpyxl
 beautifulsoup4
 geopy
-fastapi
 uvicorn[standard]
-pydantic-settings
 staticmap
 Pillow
-httpx

@@ -39,3 +39,7 @@ GA/
 # Frontend
 ui/node_modules/
 ui/dist/
+
+# Shared libraries copied during build
+mees-shared-py/
+mees-shared-ui/

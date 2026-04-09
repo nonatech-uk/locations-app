@@ -1,5 +1,7 @@
 """My-Locations API — FastAPI application."""
 
+import asyncio
+import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,13 +19,26 @@ from src.api.settings import settings
 from src.api.deps import close_pool, init_pool
 from src.api.routers import gps, owntracks, place_types, places, skiing, stats
 
+from mees_shared.dashboard import register_with_dashboard
+
 STATIC_DIR = Path(_project_root) / "static"
+
+_log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_pool()
+    task = asyncio.create_task(register_with_dashboard(
+        label="Locations",
+        href="https://locations.mees.st",
+        icon="\u25CE",
+        sort_order=6,
+        registry_key=settings.dash_registry_key,
+        dashboard_url="http://127.0.0.1:8400/api/v1/apps/register",
+    ))
     yield
+    task.cancel()
     close_pool()
 
 
