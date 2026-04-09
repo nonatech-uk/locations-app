@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import AppSwitcher from './AppSwitcher'
 
 const links = [
@@ -8,10 +8,10 @@ const links = [
 
 export default function TopNav() {
   return (
-    <header className="h-12 shrink-0 bg-bg-secondary border-b border-border flex items-center px-4 gap-6">
-      <div className="flex items-center gap-2 mr-4">
-        <span className="text-lg font-semibold text-accent">My Locations</span>
-        <AppSwitcher />
+    <header className="h-12 shrink-0 bg-bg-secondary border-b border-border flex items-center px-3 md:px-4 gap-3 md:gap-6 relative z-50">
+      <div className="flex items-center gap-2 mr-1 md:mr-4">
+        <Link to="/" className="text-base md:text-lg font-semibold text-accent hover:text-accent-hover transition-colors">My Locations</Link>
+        <AppSwitcher currentApp="Locations" />
       </div>
       <nav className="flex gap-1">
         {links.map((l) => (

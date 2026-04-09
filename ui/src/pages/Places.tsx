@@ -95,7 +95,7 @@ export default function Places() {
 
         {data && (
           <>
-            <table className="w-full">
+            <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-text-secondary uppercase tracking-wider">
                   <th className="px-3 py-2">Name</th>
