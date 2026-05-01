@@ -259,13 +259,19 @@ def update_place(place_id: int, update: PlaceUpdate, _user: CurrentUser = Depend
     cur = conn.cursor()
     cur.execute(f"UPDATE place SET {set_clause} WHERE id = %(id)s RETURNING id", changes)
     row = cur.fetchone()
-    conn.commit()
-    cur.close()
-
     if not row:
+        cur.close()
+        conn.rollback()
         raise HTTPException(404, "Place not found")
+    conn.commit()
 
-    return get_place(place_id, conn)
+    cur.execute(
+        f"SELECT {PLACE_COLS} FROM place p JOIN place_type pt ON pt.id = p.place_type_id WHERE p.id = %s",
+        (place_id,),
+    )
+    detail = cur.fetchone()
+    cur.close()
+    return _row_to_summary(detail)
 
 
 # --- Delete ---
