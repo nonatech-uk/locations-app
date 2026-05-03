@@ -2,12 +2,22 @@
 """Load GPS points from KML files into the database."""
 
 import argparse
+import json
 import re
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from pathlib import Path
 
 import config
 import db
+
+
+_OWNTRACKS_FLOAT_COLS = {
+    "lat", "lon", "altitude_m", "altitude_ft", "speed_mph", "speed_kmh",
+    "direction", "accuracy_m", "vertical_accuracy_m", "pressure_kpa",
+}
+_OWNTRACKS_INT_COLS = {"battery_pct", "battery_status", "monitoring_mode"}
+_OWNTRACKS_TS_COLS = {"ts", "created_at"}
 
 
 # Direction mapping from FollowMee style codes
@@ -93,6 +103,48 @@ def parse_direction(style_url):
     return DIRECTION_MAP.get(style)
 
 
+def parse_extended_data(pm, ns):
+    """Read <ExtendedData><Data name="..."><value>...</value></Data> children.
+
+    Returns a dict with typed values: floats/ints where the column is numeric,
+    list for in_regions, dict for raw_payload (JSON-decoded), datetime for
+    timestamp columns, str otherwise. Returns {} if no ExtendedData present.
+    """
+    ext = pm.find(f'{ns}ExtendedData') if ns else pm.find('ExtendedData')
+    if ext is None:
+        return {}
+
+    out = {}
+    data_tag = f'{ns}Data' if ns else 'Data'
+    value_tag = f'{ns}value' if ns else 'value'
+    for data in ext.findall(data_tag):
+        name = data.get('name')
+        if not name:
+            continue
+        val_elem = data.find(value_tag)
+        if val_elem is None or val_elem.text is None:
+            continue
+        raw = val_elem.text.strip()
+        if raw == '' or raw.lower() == 'none':
+            continue
+        try:
+            if name == 'raw_payload':
+                out[name] = json.loads(raw)
+            elif name == 'in_regions':
+                out[name] = json.loads(raw) if raw.startswith('[') else [raw]
+            elif name in _OWNTRACKS_FLOAT_COLS:
+                out[name] = float(raw)
+            elif name in _OWNTRACKS_INT_COLS:
+                out[name] = int(float(raw))
+            elif name in _OWNTRACKS_TS_COLS:
+                out[name] = datetime.fromisoformat(raw)
+            else:
+                out[name] = raw
+        except (ValueError, json.JSONDecodeError):
+            out[name] = raw
+    return out
+
+
 def is_fr24_kml(root, ns):
     """Check if this is a FlightRadar24 KML by looking for FR24 markers."""
     doc_desc = find_element(root, 'description', ns)
@@ -154,6 +206,9 @@ def parse_kml_file(filepath, device_id=None, source_type='kml'):
             lat = float(coords[1])
             altitude_m = float(coords[2]) if len(coords) > 2 and float(coords[2]) != 0 else None
 
+            # Lossless OwnTracks rows carry ExtendedData; prefer those values.
+            ext = parse_extended_data(pm, ns)
+
             # Get description for additional fields
             desc_elem = find_element(pm, 'description', ns)
             desc = desc_elem.text if desc_elem is not None else None
@@ -175,20 +230,25 @@ def parse_kml_file(filepath, device_id=None, source_type='kml'):
                 alt_m = round(alt_ft * 0.3048, 1)
 
             point = {
-                'device_id': device_id,
-                'device_name': device_name,
-                'ts': ts,
-                'lat': lat,
-                'lon': lon,
-                'altitude_m': alt_m,
-                'altitude_ft': alt_ft,
-                'speed_mph': parsed_desc.get('speed_mph'),
-                'speed_kmh': parsed_desc.get('speed_kmh'),
-                'direction': direction,
-                'accuracy_m': parsed_desc.get('accuracy_m'),
-                'battery_pct': None,
-                'source_type': source_type
+                'device_id': ext.get('device_id') or device_id,
+                'device_name': ext.get('device_name') or device_name,
+                'ts': ext.get('ts') or ts,
+                'lat': ext.get('lat', lat),
+                'lon': ext.get('lon', lon),
+                'altitude_m': ext.get('altitude_m', alt_m),
+                'altitude_ft': ext.get('altitude_ft', alt_ft),
+                'speed_mph': ext.get('speed_mph', parsed_desc.get('speed_mph')),
+                'speed_kmh': ext.get('speed_kmh', parsed_desc.get('speed_kmh')),
+                'direction': ext.get('direction', direction),
+                'accuracy_m': ext.get('accuracy_m', parsed_desc.get('accuracy_m')),
+                'battery_pct': ext.get('battery_pct'),
+                'source_type': source_type,
             }
+            for col in ('battery_status', 'connection_type', 'wifi_ssid', 'wifi_bssid',
+                        'vertical_accuracy_m', 'trigger_type', 'monitoring_mode', 'topic',
+                        'in_regions', 'pressure_kpa', 'poi', 'created_at', 'raw_payload'):
+                if col in ext:
+                    point[col] = ext[col]
             points.append(point)
 
         except (ValueError, AttributeError):
